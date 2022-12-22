@@ -22,6 +22,7 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
+import pylab as plt
 
 import moco.loader
 import moco.builder
@@ -31,7 +32,7 @@ model_names = sorted(name for name in models.__dict__
     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('data', metavar='DIR',
+parser.add_argument('data', default ='/content/drive/MyDrive/', metavar='DIR',
                     help='path to dataset')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     choices=model_names,
@@ -186,10 +187,10 @@ def main_worker(gpu, ngpus_per_node, args):
         # comment out the following line for debugging
         raise NotImplementedError("Only DistributedDataParallel is supported.")
     else:
-        torch.device("cpu")
+        # torch.device("cpu")
         # AllGather implementation (batch shuffle, queue update, etc.) in
         # this code only supports DistributedDataParallel.
-        # raise NotImplementedError("Only DistributedDataParallel is supported.")
+        raise NotImplementedError("Only DistributedDataParallel is supported.")
 
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
@@ -219,8 +220,9 @@ def main_worker(gpu, ngpus_per_node, args):
     cudnn.benchmark = True
 
     # Data loading code
-    f = h5py.File('train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
+    f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
     traindir = f['/train/images']
+    plt.imshow(traindir[0])
 
     #TODO: change this to our datatype
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -248,6 +250,10 @@ def main_worker(gpu, ngpus_per_node, args):
             transforms.ToTensor(),
             normalize
         ]
+
+    transform = transforms.RandomHorizontalFlip(p = 0.25)
+    hflipped_img = transform(traindir[0])
+    plt.imshow(hflipped_img)
 
     train_dataset = datasets.ImageFolder(
         traindir,
