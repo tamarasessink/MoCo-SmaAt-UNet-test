@@ -1,4 +1,3 @@
-
 class PercipationDataset:
     def __init__(self, traindir):
         self.traindir = traindir
@@ -6,6 +5,3 @@ class PercipationDataset:
     def __str__(self, traindir):
         for image in self.traindir:
             print(image.shape)
-
-
-
