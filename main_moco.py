@@ -256,10 +256,12 @@ def main_worker(gpu, ngpus_per_node, args):
             normalize
         ]
 
-    aug = transforms.Compose(augmentation)
-    img = aug(image)
-    test2 = torch.squeeze(img,0)
-    plt.imshow(test2)
+    aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
+    q, k = aug(image)
+    print(q)
+    print(k)
+    showq = torch.squeeze(q, 0)
+    plt.imshow(showq)
 
     # train_dataset = datasets.ImageFolder(
     #     traindir,
