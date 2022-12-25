@@ -28,7 +28,7 @@ from PIL import Image
 
 import moco.loader
 import moco.builder
-import models.dataset
+import moco.dataset
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -224,6 +224,8 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data loading code
     f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
     traindir = f['/train/images']
+    moco.dataset.PercipationDataset(traindir).myfunc()
+
     print(traindir[0][18:].shape)
     test = np.reshape(traindir[0][17:], (288,288))
     test = test*10000

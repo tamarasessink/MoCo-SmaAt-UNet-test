@@ -2,6 +2,8 @@ class PercipationDataset:
     def __init__(self, traindir):
         self.traindir = traindir
 
-    def __str__(self, traindir):
+    def myfunc(self):
         for image in self.traindir:
-            print(image.shape)
+          #(5734, 18, 288, 288)
+          #in data frame stoppen
+          print(image)
