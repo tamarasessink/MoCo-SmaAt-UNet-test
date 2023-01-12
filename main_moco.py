@@ -25,14 +25,15 @@ import torchvision.models as models
 import pylab as plt
 import numpy as np
 from PIL import Image
+from torch.utils import data
 
 import moco.loader
 import moco.builder
 import moco.dataset
 
 model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
+                     if name.islower() and not name.startswith("__")
+                     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR', default='/content/drive/MyDrive/',
@@ -40,8 +41,8 @@ parser.add_argument('data', metavar='DIR', default='/content/drive/MyDrive/',
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     choices=model_names,
                     help='model architecture: ' +
-                        ' | '.join(model_names) +
-                        ' (default: resnet50)')
+                         ' | '.join(model_names) +
+                         ' (default: resnet50)')
 parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
 parser.add_argument('--epochs', default=200, type=int, metavar='N',
@@ -145,6 +146,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.multiprocessing_distributed and args.gpu != 0:
         def print_pass(*args):
             pass
+
         builtins.print = print_pass
 
     if args.gpu is not None:
@@ -224,15 +226,20 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data loading code
     f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
     traindir = f['/train/images']
-    moco.dataset.PercipationDataset(traindir).myfunc()
+
+    # data_type = h5py.special_dtype(vlen=np.dtype('uint8'))
+
+    # train = moco.dataset.PercipationDataset(traindir).myfunc()
+    # all in one dataframe, than also ombouwen
+    # transform in param
 
     print(traindir[0][18:].shape)
-    test = np.reshape(traindir[0][17:], (288,288))
-    test = test*10000
+    test = np.reshape(traindir[0][17:], (288, 288))
+    test = test * 10000
     plt.imshow(test)
     image = Image.fromarray(np.uint8(test))
 
-    #TODO: change this to our datatype
+    # TODO: change this to our datatype
     normalize = transforms.Normalize(mean=[0.0188],
                                      std=[0.0278])
     if args.aug_plus:
@@ -260,15 +267,17 @@ def main_worker(gpu, ngpus_per_node, args):
         ]
 
     aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
-    q, k = aug(image)
-    print(q)
-    print(k)
-    showq = torch.squeeze(q, 0)
-    plt.imshow(showq)
+    q, k = aug(traindir)
+    # print(q)
+    # print(k)
+    # showq = torch.squeeze(q, 0)
+    # plt.imshow(showq)
 
-    # train_dataset = datasets.ImageFolder(
-    #     traindir,
-    #     moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+    # data_loader = data.DataLoader(traindir,
+    # transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+    train_dataset = datasets.ImageFolder(
+        traindir,
+        moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
 
     # if args.distributed:
     #     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -352,6 +361,7 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self, name, fmt=':f'):
         self.name = name
         self.fmt = fmt
