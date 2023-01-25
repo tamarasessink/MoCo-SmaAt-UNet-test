@@ -30,6 +30,7 @@ from torch.utils import data
 import moco.loader
 import moco.builder
 import moco.dataset
+import data.H5Dataset
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -274,36 +275,37 @@ def main_worker(gpu, ngpus_per_node, args):
     # plt.imshow(showq)
 
     # data_loader = data.DataLoader(traindir,
-    # transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+    # transform= moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
     train_dataset = datasets.ImageFolder(
-        traindir,
+        data.H5Dataset(["/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5"]),
         moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
 
-    # if args.distributed:
-    #     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    # else:
-    #     train_sampler = None
+    if args.distributed:
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    else:
+        train_sampler = None
 
-    # train_loader = torch.utils.data.DataLoader(
-    #     train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-    #     num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
+    train_loader = torch.utils.data.DataLoader(train_dataset,
+        batch_size=args.batch_size, shuffle=(train_sampler is None),
+        num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
 
-    # for epoch in range(args.start_epoch, args.epochs):
-    #     if args.distributed:
-    #         train_sampler.set_epoch(epoch)
-    #     adjust_learning_rate(optimizer, epoch, args)
 
-    #     # train for one epoch
-    #     train(train_loader, model, criterion, optimizer, epoch, args)
+    for epoch in range(args.start_epoch, args.epochs):
+        if args.distributed:
+            train_sampler.set_epoch(epoch)
+        adjust_learning_rate(optimizer, epoch, args)
 
-    #     if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-    #             and args.rank % ngpus_per_node == 0):
-    #         save_checkpoint({
-    #             'epoch': epoch + 1,
-    #             'arch': args.arch,
-    #             'state_dict': model.state_dict(),
-    #             'optimizer' : optimizer.state_dict(),
-    #         }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
+        # train for one epoch
+        train(train_loader, model, criterion, optimizer, epoch, args)
+
+        if not args.multiprocessing_distributed or (args.multiprocessing_distributed
+                and args.rank % ngpus_per_node == 0):
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'arch': args.arch,
+                'state_dict': model.state_dict(),
+                'optimizer' : optimizer.state_dict(),
+            }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):

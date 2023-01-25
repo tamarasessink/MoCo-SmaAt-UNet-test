@@ -4,6 +4,8 @@ This project is for my master thesis for precipitation nowcasting. As backbone m
 The MoCo v2 approach will be used as the backbone of the encoder. We will
 compare SmaAt-Unet with and without self-supervised learning.
 
+The 50% dataset has 4GB in size and the 20% dataset has 16.5GB in size. 
+Use the [create_dataset.py](create_datasets.py) to create the two datasets used from the original dataset from Trebing et al. (2021).
 
 ### Unsupervised Training
 
@@ -17,6 +19,6 @@ python main_moco.py \
   --batch-size 256 \
   --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
   --pretrained checkpoint/checkpoint_0199.pth.tar \
-  data 'SmaAt-UNet_data_percipitation_map/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5' \
+  data 'SmaAt_UNet_data_percipitation_map/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5'
 ```
 This script uses all the default hyper-parameters as described in the MoCo v1 paper. To run MoCo v2, set `--mlp --moco-t 0.2 --aug-plus --cos`.
