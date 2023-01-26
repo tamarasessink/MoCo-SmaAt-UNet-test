@@ -1,6 +1,10 @@
 import torch
 from torch.utils.data import Dataset
 import h5py
+import tensorflow as tf
+import numpy as np
+from PIL import Image
+
 
 # from VICTOR SCHMIDT — JUNE 15, 2021
 class H5Dataset(Dataset):
@@ -19,7 +23,7 @@ class H5Dataset(Dataset):
 
     @property
     def archives(self):
-        if self._archives is None: # lazy loading here!
+        if self._archives is None:  # lazy loading here!
             self._archives = [h5py.File(h5_path, "r") for h5_path in self.h5_paths]
         return self._archives
 
@@ -36,3 +40,60 @@ class H5Dataset(Dataset):
         if self.limit > 0:
             return min([len(self.indices), self.limit])
         return len(self.indices)
+
+
+class DataGenerator(tf.keras.utils.Sequence):
+    def __init__(self, data, batch_size, lags):
+        self.data = data
+        self.b_size = batch_size
+        self.lags = lags
+        self.time_steps = data.shape[0]
+
+    # Calculates the number of batches: samples/batch_size
+    def __len__(self):
+        # Calculating the number of batches
+        return int(self.time_steps / self.b_size)
+
+    # Obtains one batch of data
+    def __getitem__(self, idx):
+        x = self.data[idx * self.b_size:(idx + 1) * self.b_size, 0:self.lags, :, :]
+        y = self.data[idx * self.b_size:(idx + 1) * self.b_size, -1, :, :]
+
+        x = np.expand_dims(x, axis=-1)
+        y = np.expand_dims(y, axis=-1)
+        y = np.expand_dims(y, axis=1)
+
+        return x, y
+
+
+class Compose(object):
+    """Composes several transforms
+    Args:
+    transforms (list of ``Transform`` objects): list of transforms
+    to compose
+    """
+
+    def __init__(self, transforms):
+        self.transforms = transforms
+
+    def __call__(self, clip):
+        for t in self.transforms:
+            clip = t(clip)
+        return clip
+
+
+class Test(object):
+
+    def __init__(self, data, transformm):
+        self.data_arr = data  # define the data-array (load from file)
+        self.transform = transformm
+
+    def __getitem__(self, index):
+        np_arr = self.data_arr[index, :]
+
+        ## convert to PIL-image
+        img = Image.fromarray((np_arr * 255).astype('uint8'))
+        trans = self.transform(img)
+        # apply the transformations and return tensors
+        return trans
+

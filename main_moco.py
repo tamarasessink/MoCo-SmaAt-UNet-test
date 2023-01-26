@@ -8,6 +8,7 @@ import random
 import shutil
 import time
 import warnings
+from numpy import asarray
 
 import h5py as h5py
 import torch
@@ -26,11 +27,12 @@ import pylab as plt
 import numpy as np
 from PIL import Image
 from torch.utils import data
+import tensorflow as tf
 
 import moco.loader
 import moco.builder
 import moco.dataset
-import data.H5Dataset
+import data
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -227,6 +229,9 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data loading code
     f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
     traindir = f['/train/images']
+    training_generator = data.DataGenerator(traindir, 1, 12)
+    x, y = training_generator[0]
+    # to get x and y for a batch
 
     # data_type = h5py.special_dtype(vlen=np.dtype('uint8'))
 
@@ -234,11 +239,11 @@ def main_worker(gpu, ngpus_per_node, args):
     # all in one dataframe, than also ombouwen
     # transform in param
 
-    print(traindir[0][18:].shape)
-    test = np.reshape(traindir[0][17:], (288, 288))
-    test = test * 10000
-    plt.imshow(test)
-    image = Image.fromarray(np.uint8(test))
+    # print(traindir[0][18:].shape)
+    # test = np.reshape(traindir[0][17:], (288, 288))
+    # test = test * 10000
+    # plt.imshow(test)
+    # image = Image.fromarray(np.uint8(test))
 
     # TODO: change this to our datatype
     normalize = transforms.Normalize(mean=[0.0188],
@@ -267,8 +272,29 @@ def main_worker(gpu, ngpus_per_node, args):
             normalize
         ]
 
+    stack = x.squeeze()
+
+    # imgfold = ImageFolder(root='/content/drive/MyDrive/imgfold', transform=ToTensor())
+    # i = 0
+    # for im in stack:
+    #   imgfold[i] = im
+    #   i = i + 1
+    # stack_aug = data.Compose(augmentation)
+    # stack = x.squeeze()
+    # i = 0
+
+    # for image in stack:
+    #   pil_image=Image.fromarray(image)
+    #   ele = asarray(pil_image)
+    #   a[i] = ele
+    #   i = i + 1
+
+    # tensor_aug = stack_aug(stack)
+
     aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
-    q, k = aug(traindir)
+    q = data.Test(stack, aug)
+
+    print(np.array(q[0]))
     # print(q)
     # print(k)
     # showq = torch.squeeze(q, 0)
@@ -277,7 +303,8 @@ def main_worker(gpu, ngpus_per_node, args):
     # data_loader = data.DataLoader(traindir,
     # transform= moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
     train_dataset = datasets.ImageFolder(
-        data.H5Dataset(["/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5"]),
+        data.H5Dataset(
+            ["/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5"]),
         moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
 
     if args.distributed:
@@ -286,9 +313,9 @@ def main_worker(gpu, ngpus_per_node, args):
         train_sampler = None
 
     train_loader = torch.utils.data.DataLoader(train_dataset,
-        batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
-
+                                               batch_size=args.batch_size, shuffle=(train_sampler is None),
+                                               num_workers=args.workers, pin_memory=True, sampler=train_sampler,
+                                               drop_last=True)
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -299,12 +326,12 @@ def main_worker(gpu, ngpus_per_node, args):
         train(train_loader, model, criterion, optimizer, epoch, args)
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                and args.rank % ngpus_per_node == 0):
+                                                    and args.rank % ngpus_per_node == 0):
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
                 'state_dict': model.state_dict(),
-                'optimizer' : optimizer.state_dict(),
+                'optimizer': optimizer.state_dict(),
             }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
 
 
