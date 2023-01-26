@@ -230,7 +230,6 @@ def main_worker(gpu, ngpus_per_node, args):
     f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
     traindir = f['/train/images']
     training_generator = data.DataGenerator(traindir, 1, 12)
-    x, y = training_generator[0]
 
     # x and y for first stack (12 images)
     # create function and do this for all x's
@@ -262,51 +261,66 @@ def main_worker(gpu, ngpus_per_node, args):
             normalize
         ]
 
-    stack = x.squeeze()
-
+    trainlen = traindir.shape[0]
+    print(trainlen)
+    q2 = np.ndarray(shape=(12, 224, 224))
+    q33 = np.ndarray(shape=(trainlen, 12, 224, 224))
+    k2 = np.ndarray(shape=(12, 224, 224))
     aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
-    i = 0
-    x2 = np.ndarray(shape=(12, 224, 224))
-    while (i < 12):
-        image = Image.fromarray(np.uint8(stack[i] * 10000))
-        q, k = aug(image)
-        x2[i] = q
-        i = i + 1
-    print(x2)
+
+    for num in range(0, 5734):
+        x, y = training_generator[num]
+        stack = x.squeeze()
+        i = 0
+        while (i < 12):
+            image = Image.fromarray(np.uint8(stack[i] * 10000))
+            q, k = aug(image)
+            q2[i] = q
+            k2[i] = k
+            i = i + 1
+        q33[num] = q2
+    # aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
+    # i = 0
+    # q2 = np.ndarray(shape=(12,224,224))
+    # k2 = np.ndarray(shape=(12,224,224))
+    # while (i < 12):
+    #   image = Image.fromarray(np.uint8(stack[i]*10000))
+    #   q, k = aug(image)
+    #   q2[i] = q
+    #   k2[i] = k
+    #   i = i + 1
+    print(q33.shape)
 
     # data_loader = data.DataLoader(traindir,
     # transform= moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
-    train_dataset = datasets.ImageFolder(
-        data.H5Dataset(
-            ["/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5"]),
-        moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+    train_dataset = q2, k2
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     else:
         train_sampler = None
 
-    train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=args.batch_size, shuffle=(train_sampler is None),
-                                               num_workers=args.workers, pin_memory=True, sampler=train_sampler,
-                                               drop_last=True)
+    # train_loader = torch.utils.data.DataLoader(train_dataset,
+    #                                            batch_size=args.batch_size, shuffle=(train_sampler is None),
+    #                                            num_workers=args.workers, pin_memory=True, sampler=train_sampler,
+    #                                            drop_last=True)
 
-    for epoch in range(args.start_epoch, args.epochs):
-        if args.distributed:
-            train_sampler.set_epoch(epoch)
-        adjust_learning_rate(optimizer, epoch, args)
+    # for epoch in range(args.start_epoch, args.epochs):
+    #     if args.distributed:
+    #         train_sampler.set_epoch(epoch)
+    #     adjust_learning_rate(optimizer, epoch, args)
 
-        # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
+    #     # train for one epoch
+    #     train(train_loader, model, criterion, optimizer, epoch, args)
 
-        if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                                                    and args.rank % ngpus_per_node == 0):
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'arch': args.arch,
-                'state_dict': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-            }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
+    #     if not args.multiprocessing_distributed or (args.multiprocessing_distributed
+    #                                                 and args.rank % ngpus_per_node == 0):
+    #         save_checkpoint({
+    #             'epoch': epoch + 1,
+    #             'arch': args.arch,
+    #             'state_dict': model.state_dict(),
+    #             'optimizer': optimizer.state_dict(),
+    #         }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
