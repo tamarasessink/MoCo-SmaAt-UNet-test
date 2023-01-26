@@ -231,19 +231,9 @@ def main_worker(gpu, ngpus_per_node, args):
     traindir = f['/train/images']
     training_generator = data.DataGenerator(traindir, 1, 12)
     x, y = training_generator[0]
-    # to get x and y for a batch
 
-    # data_type = h5py.special_dtype(vlen=np.dtype('uint8'))
-
-    # train = moco.dataset.PercipationDataset(traindir).myfunc()
-    # all in one dataframe, than also ombouwen
-    # transform in param
-
-    # print(traindir[0][18:].shape)
-    # test = np.reshape(traindir[0][17:], (288, 288))
-    # test = test * 10000
-    # plt.imshow(test)
-    # image = Image.fromarray(np.uint8(test))
+    # x and y for first stack (12 images)
+    # create function and do this for all x's
 
     # TODO: change this to our datatype
     normalize = transforms.Normalize(mean=[0.0188],
@@ -274,31 +264,15 @@ def main_worker(gpu, ngpus_per_node, args):
 
     stack = x.squeeze()
 
-    # imgfold = ImageFolder(root='/content/drive/MyDrive/imgfold', transform=ToTensor())
-    # i = 0
-    # for im in stack:
-    #   imgfold[i] = im
-    #   i = i + 1
-    # stack_aug = data.Compose(augmentation)
-    # stack = x.squeeze()
-    # i = 0
-
-    # for image in stack:
-    #   pil_image=Image.fromarray(image)
-    #   ele = asarray(pil_image)
-    #   a[i] = ele
-    #   i = i + 1
-
-    # tensor_aug = stack_aug(stack)
-
     aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
-    q = data.Test(stack, aug)
-
-    print(np.array(q[0]))
-    # print(q)
-    # print(k)
-    # showq = torch.squeeze(q, 0)
-    # plt.imshow(showq)
+    i = 0
+    x2 = np.ndarray(shape=(12, 224, 224))
+    while (i < 12):
+        image = Image.fromarray(np.uint8(stack[i] * 10000))
+        q, k = aug(image)
+        x2[i] = q
+        i = i + 1
+    print(x2)
 
     # data_loader = data.DataLoader(traindir,
     # transform= moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
