@@ -34,6 +34,8 @@ import moco.builder
 import moco.dataset
 import data
 
+os.environ.pop('LD_PRELOAD', None)
+
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
@@ -46,13 +48,13 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     help='model architecture: ' +
                          ' | '.join(model_names) +
                          ' (default: resnet50)')
-parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=1, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=200, type=int, metavar='N',
+parser.add_argument('--epochs', default=50, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=256, type=int,
+parser.add_argument('-b', '--batch-size', default=50, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -263,64 +265,49 @@ def main_worker(gpu, ngpus_per_node, args):
 
     trainlen = traindir.shape[0]
     print(trainlen)
-    q2 = np.ndarray(shape=(12, 224, 224))
-    q33 = np.ndarray(shape=(trainlen, 12, 224, 224))
-    k2 = np.ndarray(shape=(12, 224, 224))
+    aug_q = np.ndarray(shape=(1000, 12, 224, 224))
+    aug_k = np.ndarray(shape=(1000, 12, 224, 224))
     aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
-    for num in range(0, 5734):
+    for num in range(0, 1000):
         x, y = training_generator[num]
         stack = x.squeeze()
         i = 0
         while (i < 12):
             image = Image.fromarray(np.uint8(stack[i] * 10000))
             q, k = aug(image)
-            q2[i] = q
-            k2[i] = k
+            aug_q[num][i] = q
+            aug_k[num][i] = q
             i = i + 1
-        q33[num] = q2
-    # aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
-    # i = 0
-    # q2 = np.ndarray(shape=(12,224,224))
-    # k2 = np.ndarray(shape=(12,224,224))
-    # while (i < 12):
-    #   image = Image.fromarray(np.uint8(stack[i]*10000))
-    #   q, k = aug(image)
-    #   q2[i] = q
-    #   k2[i] = k
-    #   i = i + 1
-    print(q33.shape)
 
-    # data_loader = data.DataLoader(traindir,
-    # transform= moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
-    train_dataset = q2, k2
+    train_dataset = aug_q, aug_k
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     else:
         train_sampler = None
 
-    # train_loader = torch.utils.data.DataLoader(train_dataset,
-    #                                            batch_size=args.batch_size, shuffle=(train_sampler is None),
-    #                                            num_workers=args.workers, pin_memory=True, sampler=train_sampler,
-    #                                            drop_last=True)
+    train_loader = torch.utils.data.DataLoader(train_dataset,
+                                               batch_size=args.batch_size, shuffle=(train_sampler is None),
+                                               num_workers=args.workers, pin_memory=True, sampler=train_sampler,
+                                               drop_last=True)
+    print('current')
+    for epoch in range(args.start_epoch, args.epochs):
+        if args.distributed:
+            train_sampler.set_epoch(epoch)
+        adjust_learning_rate(optimizer, epoch, args)
 
-    # for epoch in range(args.start_epoch, args.epochs):
-    #     if args.distributed:
-    #         train_sampler.set_epoch(epoch)
-    #     adjust_learning_rate(optimizer, epoch, args)
+        # train for one epoch
+        train(train_loader, model, criterion, optimizer, epoch, args)
 
-    #     # train for one epoch
-    #     train(train_loader, model, criterion, optimizer, epoch, args)
-
-    #     if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-    #                                                 and args.rank % ngpus_per_node == 0):
-    #         save_checkpoint({
-    #             'epoch': epoch + 1,
-    #             'arch': args.arch,
-    #             'state_dict': model.state_dict(),
-    #             'optimizer': optimizer.state_dict(),
-    #         }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
+        if not args.multiprocessing_distributed or (args.multiprocessing_distributed
+                                                    and args.rank % ngpus_per_node == 0):
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'arch': args.arch,
+                'state_dict': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+            }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
