@@ -9,6 +9,7 @@ import shutil
 import time
 import warnings
 from numpy import asarray
+from numpy import savetxt
 
 import h5py as h5py
 import torch
@@ -266,6 +267,7 @@ def main_worker(gpu, ngpus_per_node, args):
     trainlen = traindir.shape[0]
     print(trainlen)
     aug_q = np.ndarray(shape=(1000, 12, 224, 224))
+    np.save('/content/drive/MyDrive/imgfold (1)/data.csv', aug_q)
     aug_k = np.ndarray(shape=(1000, 12, 224, 224))
     aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
@@ -277,9 +279,12 @@ def main_worker(gpu, ngpus_per_node, args):
             image = Image.fromarray(np.uint8(stack[i] * 10000))
             q, k = aug(image)
             aug_q[num][i] = q
-            aug_k[num][i] = q
+            # aug_k[num][i] = q
             i = i + 1
-
+    np.save('/content/drive/MyDrive/imgfold (1)/data.csv', aug_q)
+    fp = np.memmap('/content/drive/MyDrive/imgfold (1)/data.csv.npy')
+    print(fp[0])
+    print(aug_q[0])
     train_dataset = aug_q, aug_k
 
     if args.distributed:
