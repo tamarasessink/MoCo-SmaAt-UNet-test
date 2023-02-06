@@ -98,7 +98,7 @@ class Test(object):
         return trans
 
 
-class createBatchDataset(np.ndarray):
+class createBatchDataset():
     def __init__(self, data, end_last, batch_size, transform, new_data):
         self.data = data
         self.end_last = end_last
@@ -109,7 +109,7 @@ class createBatchDataset(np.ndarray):
     def __getitem__(self, num):
         for num in range(0, 32):
             # x, y = self.data[num]
-            stack = self.data[num.astype(int)]
+            stack = self.data[num]
             i = 0
             while (i < 12):
                 image = Image.fromarray(np.uint8(stack * 10000))
@@ -118,5 +118,5 @@ class createBatchDataset(np.ndarray):
                 # aug_k[num][i] = q
                 i = i + 1
 
-        return self.new_data
+        return np.asarray(self.new_data)
 
