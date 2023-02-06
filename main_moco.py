@@ -55,7 +55,7 @@ parser.add_argument('--epochs', default=50, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=256, type=int,
+parser.add_argument('-b', '--batch-size', default=25, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -267,19 +267,28 @@ def main_worker(gpu, ngpus_per_node, args):
     trainlen = traindir.shape[0]
     print(trainlen)
     aug_q = np.ndarray(shape=(trainlen, 12, 224, 224))
+    q2 = np.ndarray(shape=(32, 12, 288, 288))
+    aug_q2 = np.ndarray(shape=(32, 12, 224, 224))
     # np.save('/content/drive/MyDrive/imgfold (1)/data.csv', aug_q)
     aug_k = np.ndarray(shape=(trainlen, 12, 224, 224))
     aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
     last = 0
-    batch = args.batch_size
+    batch = 32
+    batch_new = batch
+    for i in range(0, 32):
+        x, y = training_generator[i]
+        q2[i] = x.squeeze()
+    # loop over all x'es, put them in a frame, and use those with max of 32 in function
 
-    while (batch < trainlen):
-        aug_q, last = data.createBatchDataset(training_generator, last, batch, aug, aug_q)
-        batch = batch + last
+    while (batch_new < trainlen):
+        aug_q2 = data.createBatchDataset(q2, 0, 32, aug, aug_q2)
+        aug_q[last:batch] = aug_q2
+        batch_new = batch_new + batch
+        last = last + batch
         print(last)
+        print(batch_new)
 
-    print(aug_q[0])
     train_dataset = aug_q, aug_k
 
     if args.distributed:

@@ -97,24 +97,26 @@ class Test(object):
         # apply the transformations and return tensors
         return trans
 
-class createBatchDataset(tf.keras.utils.Sequence):
+
+class createBatchDataset(np.ndarray):
     def __init__(self, data, end_last, batch_size, transform, new_data):
         self.data = data
         self.end_last = end_last
-        self.b_size = batch_size
+        self.batch_size = batch_size
+        self.transform = transform
         self.new_data = new_data
 
-    def _trans_data(self):
-      for num in range(self.end_last, self.batch_size):
-          x, y = self.data[num]
-          stack = x.squeeze()
-          i = 0
-          while (i < 12):
-              image = Image.fromarray(np.uint8(stack[i] * 10000))
-              q, k = self.transform(image)
-              self.new_data[num][i] = q
-              # aug_k[num][i] = q
-              i = i + 1
-      self.end_last = self.batch_size
-      return self.new_data, self.end_last
+    def __getitem__(self, num):
+        for num in range(0, 32):
+            # x, y = self.data[num]
+            stack = self.data[num.astype(int)]
+            i = 0
+            while (i < 12):
+                image = Image.fromarray(np.uint8(stack * 10000))
+                q, k = self.transform(image)
+                self.new_data[num][i] = q
+                # aug_k[num][i] = q
+                i = i + 1
+
+        return self.new_data
 
