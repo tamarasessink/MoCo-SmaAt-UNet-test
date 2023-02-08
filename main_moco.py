@@ -267,9 +267,6 @@ def main_worker(gpu, ngpus_per_node, args):
     trainlen = traindir.shape[0]
     print(trainlen)
     aug_q = np.ndarray(shape=(trainlen, 12, 224, 224))
-    # q2 = np.ndarray(shape=(32, 12, 288, 288))
-    # aug_q2 = np.ndarray(shape=(32, 12, 224, 224))
-    # np.save('/content/drive/MyDrive/imgfold (1)/data.csv', aug_q)
     aug_k = np.ndarray(shape=(trainlen, 12, 224, 224))
     aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
@@ -284,23 +281,6 @@ def main_worker(gpu, ngpus_per_node, args):
             aug_k[num][i] = k
             i = i + 1
 
-    # last = 0
-    # batch = 32
-    # batch_new = batch
-    # for i in range(0, 32):
-    #     x, y = training_generator[i]
-    #     q2[i] = x.squeeze()
-    # # loop over all x'es, put them in a frame, and use those with max of 32 in function
-
-    # while (batch_new < trainlen):
-    #     aug_q2 = data.createBatchDataset(q2, 0, 32, aug, aug_q2)
-    #     print(np.asarray(aug_q2))
-    #     aug_q[last:batch,:,:,:] = aug_q2
-    #     batch_new = batch_new + batch
-    #     last = last + batch
-    #     print(last)
-    #     print(batch_new)
-
     train_dataset = aug_q, aug_k
 
     if args.distributed:
@@ -312,7 +292,10 @@ def main_worker(gpu, ngpus_per_node, args):
                                                batch_size=args.batch_size, shuffle=(train_sampler is None),
                                                num_workers=args.workers, pin_memory=True, sampler=train_sampler,
                                                drop_last=True)
-    print('current')
+    # train loader does not work
+    print(len(train_loader))
+    # what is dataset for pre-train and what for real train and test???
+
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -320,7 +303,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args)
-
+        print('epoch:', epoch)
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                                                     and args.rank % ngpus_per_node == 0):
             save_checkpoint({
@@ -346,10 +329,11 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     model.train()
 
     end = time.time()
+
     for i, (images, _) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
-
+        print('test')
         if args.gpu is not None:
             images[0] = images[0].cuda(args.gpu, non_blocking=True)
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
