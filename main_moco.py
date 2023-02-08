@@ -266,11 +266,11 @@ def main_worker(gpu, ngpus_per_node, args):
 
     trainlen = traindir.shape[0]
     print(trainlen)
-    aug_q = np.ndarray(shape=(trainlen, 12, 224, 224))
-    aug_k = np.ndarray(shape=(trainlen, 12, 224, 224))
+    aug_q = np.ndarray(shape=(100, 12, 224, 224))
+    aug_k = np.ndarray(shape=(100, 12, 224, 224))
     aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
-    for num in range(0, trainlen):
+    for num in range(0, 100):
         x, y = training_generator[num]
         stack = x.squeeze()
         i = 0
@@ -282,18 +282,24 @@ def main_worker(gpu, ngpus_per_node, args):
             i = i + 1
 
     train_dataset = aug_q, aug_k
+    # this is tuple class <0, 1>
+    # inside the typle class is a ndarray class (len of aug_q)
+    print(type(train_dataset))
+    print(type(train_dataset[0]))
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     else:
         train_sampler = None
 
-    train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=args.batch_size, shuffle=(train_sampler is None),
-                                               num_workers=args.workers, pin_memory=True, sampler=train_sampler,
-                                               drop_last=True)
+    # train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
+    # num_workers=args.workers, pin_memory=True, sampler=train_sampler)
+
+
     # train loader does not work
-    print(len(train_loader))
+    # print(len(train_loader))
+    # for i, j in enumerate(train_loader):
+    #   print(i,j)
     # what is dataset for pre-train and what for real train and test???
 
     for epoch in range(args.start_epoch, args.epochs):
