@@ -26,6 +26,11 @@ import torch.utils.data.distributed
 import torchvision.datasets as datasets
 import torchvision.models as models
 import torchvision.transforms as transforms
+from PIL import Image
+import numpy as np
+import h5py
+import data
+import pylab as plt
 
 
 model_names = sorted(
@@ -47,13 +52,13 @@ parser.add_argument(
 parser.add_argument(
     "-j",
     "--workers",
-    default=32,
+    default=0,
     type=int,
     metavar="N",
     help="number of data loading workers (default: 32)",
 )
 parser.add_argument(
-    "--epochs", default=100, type=int, metavar="N", help="number of total epochs to run"
+    "--epochs", default=1, type=int, metavar="N", help="number of total epochs to run"
 )
 parser.add_argument(
     "--start-epoch",
@@ -334,14 +339,33 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data loading code
     f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
     traindir = f['/train/images']
+    training_generator = data.DataGenerator(traindir, 1, 12)
     valdir = f['/test/images']
+    val_generator = data.DataGenerator(valdir, 1, 12)
     # change to our dataset, see main_moco
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-    )
+    normalize = transforms.Normalize(mean=[0.0188],
+                                     std=[0.0278])
+    trainlen = traindir.shape[0]
+    vallen = valdir.shape[0]
+
+    for num in range(0, trainlen):
+        x, y = training_generator[num]
+        stack = x.squeeze()
+        i = 0
+        image_folder = "/image"+ str(num)
+        directory = "images_training"+ image_folder
+        if not os.path.exists(directory):
+          os.makedirs(directory)
+
+        while (i < 12):
+            image = Image.fromarray(np.uint8(stack[i] * 10000))
+            image_num = "/image"+ str(i)+ ".jpeg"
+            if not os.path.exists(image_num):
+              plt.imsave(directory+image_num, image)
+            i = i + 1
 
     train_dataset = datasets.ImageFolder(
-        traindir,
+        'images_training',
         transforms.Compose(
             [
                 transforms.RandomResizedCrop(224),
@@ -351,6 +375,22 @@ def main_worker(gpu, ngpus_per_node, args):
             ]
         ),
     )
+
+    for num in range(0, vallen):
+        x, y = val_generator[num]
+        stack = x.squeeze()
+        i = 0
+        image_folder = "/image"+ str(num)
+        directory = "images_testing"+ image_folder
+        if not os.path.exists(directory):
+          os.makedirs(directory)
+
+        while (i < 12):
+            image = Image.fromarray(np.uint8(stack[i] * 10000))
+            image_num = "/image"+ str(i)+ ".jpeg"
+            if not os.path.exists(image_num):
+              plt.imsave(directory+image_num, image)
+            i = i + 1
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -368,7 +408,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     val_loader = torch.utils.data.DataLoader(
         datasets.ImageFolder(
-            valdir,
+            'images_testing',
             transforms.Compose(
                 [
                     transforms.Resize(256),

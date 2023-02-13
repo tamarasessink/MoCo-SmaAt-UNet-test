@@ -51,7 +51,7 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                          ' (default: resnet50)')
 parser.add_argument('-j', '--workers', default=0, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=50, type=int, metavar='N',
+parser.add_argument('--epochs', default=1, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -237,7 +237,6 @@ def main_worker(gpu, ngpus_per_node, args):
     # x and y for first stack (12 images)
     # create function and do this for all x's
 
-    # TODO: change this to our datatype
     normalize = transforms.Normalize(mean=[0.0188],
                                      std=[0.0278])
     if args.aug_plus:
@@ -270,19 +269,20 @@ def main_worker(gpu, ngpus_per_node, args):
     # aug_k = np.ndarray(shape=(100, 12, 224, 224))
     # aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
-    for num in range(0, 100):
+    for num in range(0, trainlen):
         x, y = training_generator[num]
         stack = x.squeeze()
         i = 0
-        image_folder = "/image" + str(num)
-        directory = "images" + image_folder
+        image_folder = "/image"+ str(num)
+        directory = "images"+ image_folder
         if not os.path.exists(directory):
-            os.makedirs(directory)
+          os.makedirs(directory)
 
         while (i < 12):
             image = Image.fromarray(np.uint8(stack[i] * 10000))
-            image_num = "/image" + str(i) + ".jpeg"
-            plt.imsave(directory + image_num, image)
+            image_num = "/image"+ str(i)+ ".jpeg"
+            if not os.path.exists(image_num):
+              plt.imsave(directory+image_num, image)
             # q, k = aug(image)
             # aug_q[num][i] = q
             # aug_k[num][i] = k
@@ -304,8 +304,6 @@ def main_worker(gpu, ngpus_per_node, args):
                                                shuffle=(train_sampler is None),
                                                num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
-    # train loader does not work
-    print(len(train_loader))
     # what is dataset for pre-train and what for real train and test???
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -345,7 +343,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     for i, (images, _) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
-        print('test')
         if args.gpu is not None:
             images[0] = images[0].cuda(args.gpu, non_blocking=True)
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
@@ -446,7 +443,7 @@ def accuracy(output, target, topk=(1,)):
 
         res = []
         for k in topk:
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
