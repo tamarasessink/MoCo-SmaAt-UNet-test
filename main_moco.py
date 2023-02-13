@@ -104,7 +104,7 @@ parser.add_argument('--moco-t', default=0.07, type=float,
 # options for moco v2
 parser.add_argument('--mlp', action='store_true',
                     help='use mlp head')
-parser.add_argument('--aug-plus', action='store_true',
+parser.add_argument('--aug-plus', default=True, action='store_true',
                     help='use moco v2 data augmentation')
 parser.add_argument('--cos', action='store_true',
                     help='use cosine lr schedule')
@@ -266,40 +266,46 @@ def main_worker(gpu, ngpus_per_node, args):
 
     trainlen = traindir.shape[0]
     print(trainlen)
-    aug_q = np.ndarray(shape=(100, 12, 224, 224))
-    aug_k = np.ndarray(shape=(100, 12, 224, 224))
-    aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
+    # aug_q = np.ndarray(shape=(100, 12, 224, 224))
+    # aug_k = np.ndarray(shape=(100, 12, 224, 224))
+    # aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
     for num in range(0, 100):
         x, y = training_generator[num]
         stack = x.squeeze()
         i = 0
+        image_folder = "/image" + str(num)
+        directory = "images" + image_folder
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
         while (i < 12):
             image = Image.fromarray(np.uint8(stack[i] * 10000))
-            q, k = aug(image)
-            aug_q[num][i] = q
-            aug_k[num][i] = k
+            image_num = "/image" + str(i) + ".jpeg"
+            plt.imsave(directory + image_num, image)
+            # q, k = aug(image)
+            # aug_q[num][i] = q
+            # aug_k[num][i] = k
             i = i + 1
 
-    train_dataset = aug_q, aug_k
+    # train_dataset = aug_q, aug_k
     # this is tuple class <0, 1>
     # inside the typle class is a ndarray class (len of aug_q)
-    print(type(train_dataset))
-    print(type(train_dataset[0]))
+    train_dataset = datasets.ImageFolder(
+        'images', moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
+    )
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     else:
         train_sampler = None
 
-    # train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-    # num_workers=args.workers, pin_memory=True, sampler=train_sampler)
-
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=args.batch_size,
+                                               shuffle=(train_sampler is None),
+                                               num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     # train loader does not work
-    # print(len(train_loader))
-    # for i, j in enumerate(train_loader):
-    #   print(i,j)
+    print(len(train_loader))
     # what is dataset for pre-train and what for real train and test???
 
     for epoch in range(args.start_epoch, args.epochs):
