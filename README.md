@@ -5,7 +5,7 @@ The MoCo v2 approach will be used as the backbone of the encoder. We will
 compare SmaAt-Unet with and without self-supervised learning.
 
 The 50% dataset has 4GB in size and the 20% dataset has 16.5GB in size. 
-Use the [create_dataset.py](create_datasets.py) to create the two datasets used from the original dataset from Trebing et al. (2021).
+Use the [create_dataset.py] to create the two datasets used from the original dataset from Trebing et al. (2021).
 
 ### Unsupervised Training
 

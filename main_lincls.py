@@ -53,7 +53,7 @@ parser.add_argument(
 parser.add_argument(
     "-j",
     "--workers",
-    default=0,
+    default=12,
     type=int,
     metavar="N",
     help="number of data loading workers (default: 32)",
@@ -337,6 +337,12 @@ def main_worker(gpu, ngpus_per_node, args):
 
     cudnn.benchmark = True
 
+    # x and y for first stack (12 images)
+    # create function and do this for all x's
+
+    normalize = transforms.Normalize(mean=[0.0188],
+                                     std=[0.0278])
+
     # Data loading code
     f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
     traindir = f['/train/images']
@@ -349,24 +355,8 @@ def main_worker(gpu, ngpus_per_node, args):
     trainlen = traindir.shape[0]
     vallen = valdir.shape[0]
 
-    for num in range(0, trainlen):
-        x, y = training_generator[num]
-        stack = x.squeeze()
-        i = 0
-        image_folder = "/image"+ str(num)
-        directory = "images_training"+ image_folder
-        if not os.path.exists(directory):
-          os.makedirs(directory)
-
-        while (i < 12):
-            image = Image.fromarray(np.uint8(stack[i] * 10000))
-            image_num = "/image"+ str(i)+ ".jpeg"
-            if not os.path.exists(image_num):
-              plt.imsave(directory+image_num, image)
-            i = i + 1
-
     train_dataset = datasets.ImageFolder(
-        'images_training',
+        'images',
         transforms.Compose(
             [
                 transforms.RandomResizedCrop(224),
@@ -382,7 +372,7 @@ def main_worker(gpu, ngpus_per_node, args):
         stack = x.squeeze()
         i = 0
         image_folder = "/image"+ str(num)
-        directory = "images_testing"+ image_folder
+        directory = "images_test"+ image_folder
         if not os.path.exists(directory):
           os.makedirs(directory)
 
@@ -405,11 +395,12 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers,
         pin_memory=True,
         sampler=train_sampler,
+        drop_last=True,
     )
 
     val_loader = torch.utils.data.DataLoader(
         datasets.ImageFolder(
-            'images_testing',
+            'images_test',
             transforms.Compose(
                 [
                     transforms.Resize(256),
@@ -423,6 +414,7 @@ def main_worker(gpu, ngpus_per_node, args):
         shuffle=False,
         num_workers=args.workers,
         pin_memory=True,
+        drop_last=True,
     )
 
     if args.evaluate:
