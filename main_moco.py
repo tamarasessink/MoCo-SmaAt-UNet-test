@@ -235,9 +235,6 @@ def main_worker(gpu, ngpus_per_node, args):
     traindir = f['/train/images']
     training_generator = data.DataGenerator(traindir, 1, 12)
 
-    # x and y for first stack (12 images)
-    # create function and do this for all x's
-
     normalize = transforms.Normalize(mean=[0.0188],
                                      std=[0.0278])
     if args.aug_plus:
@@ -265,10 +262,6 @@ def main_worker(gpu, ngpus_per_node, args):
         ]
 
     trainlen = traindir.shape[0]
-    print(trainlen)
-    # aug_q = np.ndarray(shape=(100, 12, 224, 224))
-    # aug_k = np.ndarray(shape=(100, 12, 224, 224))
-    # aug = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
     for num in range(0, trainlen):
         x, y = training_generator[num]
@@ -281,12 +274,9 @@ def main_worker(gpu, ngpus_per_node, args):
 
         while (i < 12):
             image = Image.fromarray(np.uint8(stack[i] * 10000))
-            image_num = "/image"+ str(i)+ ".jpeg"
+            image_num = "/image"+ i *'I'+ ".jpeg"
             if not os.path.exists(image_num):
               plt.imsave(directory+image_num, image)
-            # q, k = aug(image)
-            # aug_q[num][i] = q
-            # aug_k[num][i] = k
             i = i + 1
 
     # train_dataset = aug_q, aug_k
@@ -304,8 +294,6 @@ def main_worker(gpu, ngpus_per_node, args):
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=args.batch_size,
                                                shuffle=(train_sampler is None),
                                                num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True,)
-
-    # what is dataset for pre-train and what for real train and test???
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
