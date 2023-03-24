@@ -28,6 +28,8 @@ import pylab as plt
 import numpy as np
 from PIL import Image
 from torch.utils import data
+from models.SmaAt_UNet import SmaAt_UNet
+from models import unet_precip_regression_lightning as unet_regr
 import tensorflow as tf
 
 import moco.loader
@@ -41,6 +43,8 @@ TF_ENABLE_ONEDNN_OPTS=0
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
+
+model_names.__add__(unet_regr.UNetDS_Attention)
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR', default='/content/drive/MyDrive/',
@@ -329,6 +333,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
     end = time.time()
 
+    # images contains (q,k) so two random augmented versions of same image
     for i, (images, _) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
@@ -336,8 +341,11 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
             images[0] = images[0].cuda(args.gpu, non_blocking=True)
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
 
-        # compute output
+        # compute output = predict similarity score for l_pos and l_neg
+        # target = similarity score between q & k image embedding (image embedding is a 128D feature representation)
         output, target = model(im_q=images[0], im_k=images[1])
+        # target.shape torch.Size([256]) all 0's
+        # output.shape torch.Size([256, 65537])
         loss = criterion(output, target)
 
         # acc1/acc5 are (K+1)-way contrast classifier accuracy

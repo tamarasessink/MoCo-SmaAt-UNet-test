@@ -140,18 +140,24 @@ class MoCo(nn.Module):
 
         # compute logits
         # Einstein sum is more intuitive
-        # positive logits: Nx1
+        # positive logits: Nx1 (dot product to cal simality between k embedding and q embedding)
+        # torch.Size([256, 1]) for each element in batch the positive once
         l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
-        # negative logits: NxK
+        # negative logits: NxK (dot product between embeddings q en queue (embeddings k but not the k that belongs to this q)
+        # dot product between embeddings q and each key in queue
+        # This results in a tensor of shape (n, k), where each element (i, j) represents the dot product of the i-th query embedding with the j-th key embedding in the queue.
+        # torch.Size([256, 65536]) for each in batch the negative once
         l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
 
         # logits: Nx(1+K)
         logits = torch.cat([l_pos, l_neg], dim=1)
 
-        # apply temperature
+        # apply temperature (softmax)
         logits /= self.T
 
         # labels: positive key indicators
+        # are all 0 because there are no class labels in the SSL, but we need labels for the loss function
+        # it is not really used, but we need an argument to let the loss function work
         labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
 
         # dequeue and enqueue
