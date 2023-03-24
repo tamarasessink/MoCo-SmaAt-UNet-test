@@ -28,8 +28,8 @@ import pylab as plt
 import numpy as np
 from PIL import Image
 from torch.utils import data
-from models.SmaAt_UNet import SmaAt_UNet
-from models import unet_precip_regression_lightning as unet_regr
+# from models.SmaAt_UNet import SmaAt_UNet
+# from models import unet_precip_regression_lightning as unet_regr
 import tensorflow as tf
 
 import moco.loader
@@ -44,7 +44,7 @@ model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
 
-model_names.__add__(unet_regr.UNetDS_Attention)
+# model_names.__add__(unet_regr.UNetDS_Attention)
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR', default='/content/drive/MyDrive/',
@@ -239,8 +239,6 @@ def main_worker(gpu, ngpus_per_node, args):
     traindir = f['/train/images']
     training_generator = data.DataGenerator(traindir, 1, 12)
 
-    normalize = transforms.Normalize(mean=[0.0188],
-                                     std=[0.0278])
     if args.aug_plus:
         # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
         augmentation = [
@@ -251,8 +249,7 @@ def main_worker(gpu, ngpus_per_node, args):
             transforms.RandomGrayscale(p=0.2),
             transforms.RandomApply([moco.loader.GaussianBlur([.1, 2.])], p=0.5),
             transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize
+            transforms.ToTensor()
         ]
     else:
         # MoCo v1's aug: the same as InstDisc https://arxiv.org/abs/1805.01978
@@ -261,8 +258,7 @@ def main_worker(gpu, ngpus_per_node, args):
             transforms.RandomGrayscale(p=0.2),
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
             transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize
+            transforms.ToTensor()
         ]
 
     trainlen = traindir.shape[0]
@@ -277,7 +273,11 @@ def main_worker(gpu, ngpus_per_node, args):
           os.makedirs(directory)
 
         while (i < 12):
-            image = Image.fromarray(np.uint8(stack[i] * 10000))
+            min_val = np.min(stack[i])
+            max_val = np.max(stack[i])
+            # normalizing the data
+            normalized = (stack[i] - min_val) / (max_val - min_val) * 255.0
+            image = Image.fromarray(np.uint8(normalized))
             image_num = "/image"+ i *'I'+ ".jpeg"
             if not os.path.exists(image_num):
               plt.imsave(directory+image_num, image)
