@@ -342,7 +342,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
 
         # compute output = predict similarity score for l_pos and l_neg
-        # target = similarity score between q & k image embedding (image embedding is a 128D feature representation)
+        # target =  are all 0 because there are no class labels in the SSL, but we need labels for the loss function
+        # it is not really used, but we need an argument to let the loss function work
         output, target = model(im_q=images[0], im_k=images[1])
         # target.shape torch.Size([256]) all 0's
         # output.shape torch.Size([256, 65537])
