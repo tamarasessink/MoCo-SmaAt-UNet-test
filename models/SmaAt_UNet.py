@@ -3,6 +3,7 @@ from models.unet_parts import OutConv
 from models.unet_parts_depthwise_separable import DoubleConvDS, UpDS, DownDS
 from models.layers import CBAM
 
+#TODO: add copyright
 
 class SmaAt_UNet(nn.Module):
     def __init__(self, n_channels, n_classes, kernels_per_layer=2, bilinear=True, reduction_ratio=16):
@@ -47,4 +48,4 @@ class SmaAt_UNet(nn.Module):
         x = self.up3(x, x2Att)
         x = self.up4(x, x1Att)
         logits = self.outc(x)
-        return
+        return logits

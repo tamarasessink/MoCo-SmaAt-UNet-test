@@ -1,45 +1,12 @@
+import os
+
 import torch
 from torch.utils.data import Dataset
 import h5py
 import tensorflow as tf
 import numpy as np
 from PIL import Image
-
-
-# from VICTOR SCHMIDT — JUNE 15, 2021
-class H5Dataset(Dataset):
-    def __init__(self, h5_paths, limit=-1):
-        self.limit = limit
-        self.h5_paths = h5_paths
-        self._archives = [h5py.File(h5_path, "r") for h5_path in self.h5_paths]
-        self.indices = {}
-        idx = 0
-        for a, archive in enumerate(self.archives):
-            for i in range(len(archive)):
-                self.indices[idx] = (a, i)
-                idx += 1
-
-        self._archives = None
-
-    @property
-    def archives(self):
-        if self._archives is None:  # lazy loading here!
-            self._archives = [h5py.File(h5_path, "r") for h5_path in self.h5_paths]
-        return self._archives
-
-    def __getitem__(self, index):
-        a, i = self.indices[index]
-        archive = self.archives[a]
-        dataset = archive[f"trajectory_{i}"]
-        data = torch.from_numpy(dataset[:])
-        labels = dict(dataset.attrs)
-
-        return {"data": data, "labels": labels}
-
-    def __len__(self):
-        if self.limit > 0:
-            return min([len(self.indices), self.limit])
-        return len(self.indices)
+import pylab as plt
 
 
 class DataGenerator(tf.keras.utils.Sequence):
@@ -82,41 +49,34 @@ class Compose(object):
         return clip
 
 
-class Test(object):
 
-    def __init__(self, data, transformm):
-        self.data_arr = data  # define the data-array (load from file)
-        self.transform = transformm
+class createDataset:
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.f = h5py.File(self.filepath, "r")
+        self.traindir = self.f['/train/images']
+        self.training_generator = DataGenerator(self.traindir, 1, 12)
+        self.trainlen = self.traindir.shape[0]
 
-    def __getitem__(self, index):
-        np_arr = self.data_arr[index, :]
+        def process_images(self):
+            for num in range(0, self.trainlen):
+                x, y = self.training_generator[num]
+                stack = x.squeeze()
+                i = 0
+                image_folder = "/image" + str(num)
+                directory = "images" + image_folder
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
 
-        ## convert to PIL-image
-        img = Image.fromarray((np_arr * 255).astype('uint8'))
-        trans = self.transform(img)
-        # apply the transformations and return tensors
-        return trans
+                while (i < 12):
+                    min_val = np.min(stack[i])
+                    max_val = np.max(stack[i])
+                    # normalizing the data
+                    normalized = (stack[i] - min_val) / (max_val - min_val) * 255.0
+                    image = Image.fromarray(np.uint8(normalized))
+                    image_num = "/image" + i * 'I' + ".jpeg"
+                    if not os.path.exists(image_num):
+                        plt.imsave(directory + image_num, image)
+                    i = i + 1
 
-
-class createBatchDataset():
-    def __init__(self, data, end_last, batch_size, transform, new_data):
-        self.data = data
-        self.end_last = end_last
-        self.batch_size = batch_size
-        self.transform = transform
-        self.new_data = new_data
-
-    def __getitem__(self, num):
-        for num in range(0, 32):
-            # x, y = self.data[num]
-            stack = self.data[num]
-            i = 0
-            while (i < 12):
-                image = Image.fromarray(np.uint8(stack * 10000))
-                q, k = self.transform(image)
-                self.new_data[num][i] = q
-                # aug_k[num][i] = q
-                i = i + 1
-
-        return np.asarray(self.new_data)
 
