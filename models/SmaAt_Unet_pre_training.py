@@ -6,13 +6,13 @@ from models.layers import CBAM
 #TODO: add copyright
 
 class SmaAt_UNet_pre(nn.Module):
-    def __init__(self, n_channels=3, n_classes=12, kernels_per_layer=2, bilinear=True, reduction_ratio=16):
+    def __init__(self, num_classes: 12):
         super(SmaAt_UNet_pre, self).__init__()
-        self.n_channels = n_channels
-        self.n_classes = n_classes
-        kernels_per_layer = kernels_per_layer
-        self.bilinear = bilinear
-        reduction_ratio = reduction_ratio
+        self.n_channels = 3
+        # self.num_classes = 12
+        kernels_per_layer = 2
+        self.bilinear = True
+        reduction_ratio = 16
 
         self.inc = DoubleConvDS(self.n_channels, 64, kernels_per_layer=kernels_per_layer)
         self.cbam1 = CBAM(64, reduction_ratio=reduction_ratio)
@@ -30,7 +30,9 @@ class SmaAt_UNet_pre(nn.Module):
         self.up3 = UpDS(256, 128 // factor, self.bilinear, kernels_per_layer=kernels_per_layer)
         self.up4 = UpDS(128, 64, self.bilinear, kernels_per_layer=kernels_per_layer)
 
-        self.outc = OutConv(64, self.n_classes)
+        # self.fc = nn.Linear(512 * block.expansion, num_classes)
+        # self.pooling = nn.AdaptiveAvgPool2d(output_size=(1, 1))
+        self.outc = OutConv(64, num_classes)
 
     def forward(self, x):
         x1 = self.inc(x)
