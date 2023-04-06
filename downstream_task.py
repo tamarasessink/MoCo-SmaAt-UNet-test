@@ -149,7 +149,7 @@ if __name__ == "__main__":
     model = SmaAt_UNet(n_channels=3, n_classes=21)
 
     # load from pre-trained, before DistributedDataParallel constructor, this uses the parameters trained in the pre-training
-    pretrained = '[your checkpoint path]/checkpoint_0199.pth.tar'
+    pretrained = '/content/checkpoint_0019.pth.tar'
     if os.path.isfile(pretrained):
         print("=> loading checkpoint '{}'".format(pretrained))
         checkpoint = torch.load(pretrained, map_location="cpu")
