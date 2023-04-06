@@ -123,7 +123,10 @@ if __name__ == "__main__":
         transforms.CenterCrop(224)
     ])
 
-    createDataset.process_images('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5')
+    # create datasets
+    my_object = createDataset()
+    my_object.process_images_train()
+    my_object.process_images_test()
 
     train_dataset = datasets.ImageFolder(
         'images', transforms.Compose(transformations)

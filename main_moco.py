@@ -36,24 +36,22 @@ import moco.loader
 import moco.builder
 import moco.dataset
 import data
+from models.SmaAt_Unet_pre_training import SmaAt_UNet_pre
 
 # os.environ.pop('LD_PRELOAD', None)
 TF_ENABLE_ONEDNN_OPTS=0
 
-model_names = sorted(name for name in models.__dict__
-                     if name.islower() and not name.startswith("__")
-                     and callable(models.__dict__[name]))
+# model_names = sorted(name for name in models.__dict__
+#                      if name.islower() and not name.startswith("__")
+#                      and callable(models.__dict__[name]))
 
-# model_names.__add__(unet_regr.UNetDS_Attention)
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR', default='/content/drive/MyDrive/',
                     help='path to dataset')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
-                    choices=model_names,
-                    help='model architecture: ' +
-                         ' | '.join(model_names) +
-                         ' (default: resnet50)')
+# parser.add_argument('-a', '--arch', metavar='ARCH', default='SmaAt_UNet',
+#                     choices=model_names,
+#                     help='model architecture: SmaAth-unet')
 parser.add_argument('-j', '--workers', default=12, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
 parser.add_argument('--epochs', default=20, type=int, metavar='N',
@@ -173,9 +171,9 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
-    print("=> creating model '{}'".format(args.arch))
+    print("=> creating model '{}'".format(SmaAt_UNet_pre()))
     model = moco.builder.MoCo(
-        models.__dict__[args.arch],
+        SmaAt_UNet_pre(),
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     print(model)
 
@@ -311,7 +309,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                                     and args.rank % ngpus_per_node == 0):
             save_checkpoint({
                 'epoch': epoch + 1,
-                'arch': args.arch,
+                'arch': SmaAt_UNet(n_channels=3, n_classes=21),
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
             }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))

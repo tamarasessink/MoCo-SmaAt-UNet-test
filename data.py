@@ -51,32 +51,58 @@ class Compose(object):
 
 
 class createDataset:
-    def __init__(self, filepath):
-        self.filepath = filepath
+    def __init__(self):
+        self.filepath = "/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5"
         self.f = h5py.File(self.filepath, "r")
         self.traindir = self.f['/train/images']
-        self.training_generator = DataGenerator(self.traindir, 1, 12)
+        self.valdir = self.f['/test/images']
         self.trainlen = self.traindir.shape[0]
+        self.vallen = self.valdir.shape[0]
+        self.training_generator_train = DataGenerator(self.traindir, 1, 12)
+        self.training_generator_val = DataGenerator(self.valdir, 1, 12)
 
-        def process_images(self):
-            for num in range(0, self.trainlen):
-                x, y = self.training_generator[num]
-                stack = x.squeeze()
-                i = 0
-                image_folder = "/image" + str(num)
-                directory = "images" + image_folder
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
+    def process_images_train(self):
+        for num in range(0, self.trainlen):
+            x, y = self.training_generator_train[num]
+            stack = x.squeeze()
+            i = 0
+            image_folder = "/image" + str(num)
+            directory = "images" + image_folder
+            if not os.path.exists(directory):
+                os.makedirs(directory)
 
-                while (i < 12):
-                    min_val = np.min(stack[i])
-                    max_val = np.max(stack[i])
-                    # normalizing the data
-                    normalized = (stack[i] - min_val) / (max_val - min_val) * 255.0
-                    image = Image.fromarray(np.uint8(normalized))
-                    image_num = "/image" + i * 'I' + ".jpeg"
-                    if not os.path.exists(image_num):
-                        plt.imsave(directory + image_num, image)
-                    i = i + 1
+            while (i < 12):
+                min_val = np.min(stack[i])
+                max_val = np.max(stack[i])
+                # normalizing the data
+                normalized = (stack[i] - min_val) / (max_val - min_val) * 255.0
+                image = Image.fromarray(np.uint8(normalized))
+                image_num = "/image" + i * 'I' + ".jpeg"
+                if not os.path.exists(image_num):
+                    plt.imsave(directory + image_num, image)
+                i = i + 1
+
+    def process_images_test(self):
+        for num in range(0, self.vallen):
+            x, y = self.training_generator_val[num]
+            stack = x.squeeze()
+            i = 0
+            image_folder = "/image" + str(num)
+            directory = "images_val" + image_folder
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+
+            while (i < 12):
+                min_val = np.min(stack[i])
+                max_val = np.max(stack[i])
+                # normalizing the data
+                normalized = (stack[i] - min_val) / (max_val - min_val) * 255.0
+                image = Image.fromarray(np.uint8(normalized))
+                image_num = "/image" + i * 'I' + ".jpeg"
+                if not os.path.exists(image_num):
+                    plt.imsave(directory + image_num, image)
+                i = i + 1
+
+
 
 
