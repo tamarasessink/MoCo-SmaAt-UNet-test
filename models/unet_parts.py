@@ -75,3 +75,13 @@ class OutConv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
+
+class OutFC(nn.Module):
+    def __init__(self, in_features, out_features):
+        super(OutFC, self).__init__()
+        self.fc = nn.Linear(in_features, out_features)
+
+    def forward(self, x):
+        x = x.view(x.size(0), -1)  # flatten the tensor
+        x = self.fc(x)
+        return x

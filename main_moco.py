@@ -41,10 +41,6 @@ from models.SmaAt_Unet_pre_training import SmaAt_UNet_pre
 # os.environ.pop('LD_PRELOAD', None)
 TF_ENABLE_ONEDNN_OPTS=0
 
-# model_names = sorted(name for name in models.__dict__
-#                      if name.islower() and not name.startswith("__")
-#                      and callable(models.__dict__[name]))
-
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR', default='/content/drive/MyDrive/',
@@ -171,9 +167,9 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
-    print("=> creating model '{}'".format(SmaAt_UNet_pre()))
+    print("=> creating model '{}'".format(SmaAt_UNet_pre(n_channels=3, n_classes=128)))
     model = moco.builder.MoCo(
-        SmaAt_UNet_pre(),
+        SmaAt_UNet_pre(n_channels=3, n_classes=128),
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     print(model)
 
@@ -309,7 +305,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                                     and args.rank % ngpus_per_node == 0):
             save_checkpoint({
                 'epoch': epoch + 1,
-                'arch': SmaAt_UNet(n_channels=3, n_classes=21),
+                'arch': SmaAt_UNet_pre(n_channels=3, n_classes=128),
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
             }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
