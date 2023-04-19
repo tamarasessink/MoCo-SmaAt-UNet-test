@@ -1,5 +1,6 @@
 import torch.nn as nn
 from torch import Tensor
+import torch
 
 from models.unet_parts import OutConv, OutFC
 from models.unet_parts_depthwise_separable import DoubleConvDS, UpDS, DownDS
@@ -26,12 +27,16 @@ class SmaAt_UNet_pre(nn.Module):
         # (CBAM) are commonly applied to the output of the final convolutional block in an encoder is to emphasize the
         # most discriminative features in the input image that are relevant to the task being solved.
         self.cbam5 = CBAM(1024 // factor, reduction_ratio=reduction_ratio)
+        # reduce dimensionality
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         # Fully connected layer
         if self.bilinear:
-            self.fc = OutFC(512, self.n_classes)
+            # self.fc = OutFC(512 * 7 * 7, self.n_classes)
+            self.fc = nn.Linear(512, self.n_classes)
         else:
-            self.fc = OutFC(1024, self.n_classes)
+            # self.fc = OutFC(1024 * 7 * 7, self.n_classes)
+            self.fc = nn.Linear(1024, self.n_classes)
 
     def forward(self, x):
         x = self.inc(x)
@@ -40,11 +45,15 @@ class SmaAt_UNet_pre(nn.Module):
         x = self.down3(x)
         x = self.down4(x)
 
-        x5Att = self.cbam5(x)
+        x = self.cbam5(x)
+
+        # average pooling to get the correct output tensor size
+        #x = self.adaptive_pool(x)
 
         # reshape to a 1D vector
-        x = x5Att.view(x5Att.size(0), -1)
-
+        # x = x5Att.view(x5Att.size(0), -1)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
         # fully connected layer
         x = self.fc(x)
 

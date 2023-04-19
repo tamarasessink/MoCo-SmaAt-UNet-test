@@ -24,8 +24,9 @@ class MoCo(nn.Module):
 
         # create the encoders
         # num_classes is the output fc dimension
-        self.encoder_q = base_encoder(n_channels=3, n_classes=dim)
-        self.encoder_k = base_encoder(n_channels=3, n_classes=dim)
+        #TODO: something with if mlp = true then this else this
+        self.encoder_q = base_encoder
+        self.encoder_k = base_encoder
 
         self.encoder_q.fc = nn.Linear(512, dim)
         self.encoder_k.fc = nn.Linear(512, dim)
