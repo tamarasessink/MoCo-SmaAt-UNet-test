@@ -11,13 +11,15 @@ from tqdm import tqdm
 from metric import iou
 import os
 
+
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
 
 
 def fit(epochs, model, loss_func, opt, train_dl, valid_dl,
-        dev=torch.device('cpu'), save_every: int = None, tensorboard: bool = False, earlystopping=None, lr_scheduler=None):
+        dev=torch.device('cpu'), save_every: int = None, tensorboard: bool = False, earlystopping=None,
+        lr_scheduler=None):
     if tensorboard:
         from torch.utils.tensorboard import SummaryWriter
         writer = SummaryWriter(comment=f"{model.__class__.__name__}")
@@ -28,7 +30,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl,
         model.train()
         train_loss = 0.0
         for i, (xb, yb) in enumerate(tqdm(train_dl, desc="Batches", leave=False)):
-        # for i, (xb, yb) in enumerate(train_dl):
+            # for i, (xb, yb) in enumerate(train_dl):
             loss = loss_func(model(xb.to(dev)), yb.to(dev))
             opt.zero_grad()
             loss.backward()
@@ -47,7 +49,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl,
         model.eval()
         with torch.no_grad():
             for xb, yb in tqdm(valid_dl, desc="Validation", leave=False):
-            # for xb, yb in valid_dl:
+                # for xb, yb in valid_dl:
                 y_pred = model(xb.to(dev))
                 loss = loss_func(y_pred, yb.to(dev))
                 val_loss += loss.item()
@@ -111,7 +113,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl,
 
 if __name__ == "__main__":
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    batch_size = 8
+    batch_size = 64
     learning_rate = 0.001
     epochs = 200
     earlystopping = 30
@@ -137,36 +139,37 @@ if __name__ == "__main__":
     )
 
     train_dl = torch.utils.data.DataLoader(dataset=train_dataset,
-                                             batch_size=batch_size,
-                                             shuffle=True,
-                                             num_workers=0,
-                                             pin_memory=True)
+                                           batch_size=batch_size,
+                                           shuffle=True,
+                                           num_workers=0,
+                                           pin_memory=True)
     valid_dl = torch.utils.data.DataLoader(dataset=val_dataset,
-                                             batch_size=batch_size,
-                                             shuffle=True,
-                                             num_workers=0,
-                                             pin_memory=True)
-
+                                           batch_size=batch_size,
+                                           shuffle=True,
+                                           num_workers=0,
+                                           pin_memory=True)
 
     # Load SmaAt-UNet
     model = SmaAt_UNet(n_channels=3, n_classes=21)
 
     # load from pre-trained, before DistributedDataParallel constructor, this uses the parameters trained in the pre-training
-    pretrained = '/content/checkpoint_0019.pth.tar'
+    pretrained = '/content/checkpoint_0008.pth.tar'
     if os.path.isfile(pretrained):
         print("=> loading checkpoint '{}'".format(pretrained))
         checkpoint = torch.load(pretrained, map_location="cpu")
 
         # rename moco pre-trained keys
 
-
         # # Copy relevant layers from ResNet-50 to SmaAt-UNet
-        state_dict_resnet = checkpoint["state_dict"]
+        state_dict_pre = checkpoint["state_dict"]
+        for k in state_dict_pre.keys():
+            print(k)
         state_dict_smaat_unet = model.state_dict()
-        for k_resnet, k_smaat_unet in zip(state_dict_resnet.keys(), state_dict_smaat_unet.keys()):
-            if "fc" in k_resnet:  # skip the fully connected layer of ResNet-50
-                continue
-            state_dict_smaat_unet[k_smaat_unet] = state_dict_resnet[k_resnet]
+        for k_resnet, k_smaat_unet in zip(state_dict_pre.keys(), state_dict_smaat_unet.keys()):
+            if k_resnet.startswith("module.encoder_q"):
+                if "fc" in k_resnet:  # skip the fully connected layer of ResNet-50
+                    continue
+                state_dict_smaat_unet[k_smaat_unet] = state_dict_pre[k_resnet]
         # The state dictionary of SmaAt-UNet is updated with pre-trained Resnet-50 weights
         # freezes all except for last layer for fine-tuning
         model.load_state_dict(state_dict_smaat_unet)
@@ -178,55 +181,6 @@ if __name__ == "__main__":
             print("=> loaded pre-trained model '{}'".format(pretrained))
         else:
             print("=> no checkpoint found at '{}'".format(pretrained))
-
-        # Rename the keys in the ResNet-50 state dictionary to match the SmaAt-UNet state dictionary
-        # state_dict_resnet = checkpoint["state_dict"]
-        # state_dict_smaat_unet = model.state_dict()
-        # state_dict_resnet = {k.replace('module.encoder_q.', ''): v for k, v in state_dict_resnet.items()}
-        # new_state_dict_resnet = {}
-        # for k_resnet, k_smaat_unet in zip(state_dict_resnet.keys(), state_dict_smaat_unet.keys()):
-        #     if "fc" in k_resnet:
-        #         continue
-        #     if k_smaat_unet.startswith("inc."):
-        #         inc_idx = int(k_smaat_unet.split(".")[1])
-        #         state_dict_smaat_unet[k_smaat_unet + ".double_conv.0.weight"] = state_dict_resnet[ "conv1.weight"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".double_conv.0.bias"] = state_dict_resnet[".bias"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".double_conv.1.weight"] = state_dict_resnet[
-        #            ".bn1.weight"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".double_conv.1.bias"] = state_dict_resnet[".bn1.bias"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".double_conv.1.running_mean"] = state_dict_resnet[
-        #             ".bn1.running_mean"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".double_conv.1.running_var"] = state_dict_resnet[
-        #             ".bn1.running_var"]
-        #     elif k_smaat_unet.startswith("cbam"):
-        #         state_dict_smaat_unet[k_smaat_unet + ".ChannelGate.fc.0.weight"] = state_dict_resnet[
-        #             ".fc1.weight"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".ChannelGate.fc.0.bias"] = state_dict_resnet[
-        #             ".fc1.bias"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".ChannelGate.fc.2.weight"] = state_dict_resnet[
-        #             ".fc2.weight"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".ChannelGate.fc.2.bias"] = state_dict_resnet[
-        #             ".fc2.bias"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".ChannelGate.bn.weight"] = state_dict_resnet[
-        #             k_resnet + ".bn.weight"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".ChannelGate.bn.bias"] = state_dict_resnet[k_resnet + ".bn.bias"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".ChannelGate.bn.running_mean"] = state_dict_resnet[
-        #             k_resnet + ".bn.running_mean"]
-        #     elif k_smaat_unet.startswith("down"):
-        #         # loop over all down layers, "down1".
-        #         idx = int(k_smaat_unet.split(".")[0][-1])
-        #         down_key = ".down" + str(idx) + "." + k_smaat_unet.split(".")[1]
-        #         state_dict_smaat_unet[k_smaat_unet + ".double_conv.0.weight"] = state_dict_resnet[
-        #             k_resnet + ".conv1.weight"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".double_conv.0.bias"] = state_dict_resnet[
-        #             k_resnet + ".conv1.bias"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".double_conv.1.weight"] = state_dict_resnet[
-        #             k_resnet + ".bn1.weight"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".double_conv.1.bias"] = state_dict_resnet[k_resnet + ".bn1.bias"]
-        #     elif k_smaat_unet.startswith("up"):
-        #         state_dict_smaat_unet[k_smaat_unet + ".conv.0.weight"] = state_dict_resnet[k_resnet + ".weight"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".conv.0.bias"] = state_dict_resnet[k_resnet + ".bias"]
-        #         state_dict_smaat_unet[k_smaat_unet + ".conv.1.weight"] = state_dict_resnet[k_resnet + ".bn1.weight"]
 
     # Move model to device
     model.to(dev)
