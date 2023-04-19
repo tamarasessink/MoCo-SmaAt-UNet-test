@@ -24,16 +24,25 @@ class MoCo(nn.Module):
 
         # create the encoders
         # num_classes is the output fc dimension
-        #TODO: something with if mlp = true then this else this
         self.encoder_q = base_encoder
         self.encoder_k = base_encoder
 
-        self.encoder_q.fc = nn.Linear(512, dim)
-        self.encoder_k.fc = nn.Linear(512, dim)
+        if mlp:  # hack: brute-force replacement
+            dim_mlp = self.encoder_q.fc.weight.shape[1]
+            self.encoder_q.fc = nn.Sequential(
+                nn.Linear(512, dim_mlp), nn.ReLU(), self.encoder_q.fc
+            )
+            self.encoder_k.fc = nn.Sequential(
+                nn.Linear(512, dim_mlp), nn.ReLU(), self.encoder_k.fc
+            )
+
+        # self.encoder_q.fc = nn.Linear(512, dim)
+        # self.encoder_k.fc = nn.Linear(512, dim)
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
             param_k.requires_grad = False  # not update by gradient
+            param_q.requires_grad = True
 
         # create the queue
         self.register_buffer("queue", torch.randn(dim, K))

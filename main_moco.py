@@ -48,7 +48,7 @@ parser.add_argument('data', metavar='DIR', default='/content/drive/MyDrive/',
 # parser.add_argument('-a', '--arch', metavar='ARCH', default='SmaAt_UNet',
 #                     choices=model_names,
 #                     help='model architecture: SmaAth-unet')
-parser.add_argument('-j', '--workers', default=12, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
 parser.add_argument('--epochs', default=20, type=int, metavar='N',
                     help='number of total epochs to run')
@@ -350,6 +350,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         top1.update(acc1[0], images[0].size(0))
         top5.update(acc5[0], images[0].size(0))
 
+        for param in model.parameters():
+            param.requires_grad = True
         # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()

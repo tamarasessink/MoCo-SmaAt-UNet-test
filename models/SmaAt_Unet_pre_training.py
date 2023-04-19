@@ -32,10 +32,8 @@ class SmaAt_UNet_pre(nn.Module):
 
         # Fully connected layer
         if self.bilinear:
-            # self.fc = OutFC(512 * 7 * 7, self.n_classes)
             self.fc = nn.Linear(512, self.n_classes)
         else:
-            # self.fc = OutFC(1024 * 7 * 7, self.n_classes)
             self.fc = nn.Linear(1024, self.n_classes)
 
     def forward(self, x):
