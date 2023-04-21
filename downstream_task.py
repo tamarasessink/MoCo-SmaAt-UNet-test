@@ -11,6 +11,8 @@ from tqdm import tqdm
 from metric import iou
 import os
 
+from models.SmaAt_Unet_pre_training import SmaAt_UNet_pre
+
 
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
@@ -120,10 +122,11 @@ if __name__ == "__main__":
     save_every = 1
 
     # Load your dataset here
-    transformations = transforms.Compose([
+    transformations = [
         transforms.Resize(256),
-        transforms.CenterCrop(224)
-    ])
+        transforms.CenterCrop(224),
+        transforms.ToTensor()
+    ]
 
     # create datasets
     my_object = createDataset()
@@ -151,6 +154,7 @@ if __name__ == "__main__":
 
     # Load SmaAt-UNet
     model = SmaAt_UNet(n_channels=3, n_classes=21)
+    # print("=> creating model '{}'".format(model))
 
     # load from pre-trained, before DistributedDataParallel constructor, this uses the parameters trained in the pre-training
     pretrained = '/content/checkpoint_0008.pth.tar'
@@ -160,17 +164,33 @@ if __name__ == "__main__":
 
         # rename moco pre-trained keys
 
-        # # Copy relevant layers from ResNet-50 to SmaAt-UNet
         state_dict_pre = checkpoint["state_dict"]
-        for k in state_dict_pre.keys():
-            print(k)
         state_dict_smaat_unet = model.state_dict()
-        for k_resnet, k_smaat_unet in zip(state_dict_pre.keys(), state_dict_smaat_unet.keys()):
-            if k_resnet.startswith("module.encoder_q"):
-                if "fc" in k_resnet:  # skip the fully connected layer of ResNet-50
-                    continue
-                state_dict_smaat_unet[k_smaat_unet] = state_dict_pre[k_resnet]
-        # The state dictionary of SmaAt-UNet is updated with pre-trained Resnet-50 weights
+
+        # Create a new dictionary to store the updated keys
+        updated_state_dict = {}
+
+        for k_pre, k_smaat_unet in zip(state_dict_pre.keys(), state_dict_smaat_unet.keys()):
+            # Remove the "module.encoder_q." prefix from the pre-trained model's keys
+            k_pre_updated = k_pre.replace("module.encoder_q.", "")
+
+            # Check if the shapes match and skip the fully connected layer of the pre-trained model
+            if "fc" in k_pre:
+                continue
+
+            # If the shapes match, copy the weights from the pre-trained model to the new dictionary
+            if state_dict_smaat_unet[k_smaat_unet].shape == state_dict_pre[k_pre].shape:
+                updated_state_dict[k_smaat_unet] = state_dict_pre[k_pre]
+                print(f"{k_pre} mapped to {k_smaat_unet}")
+            else:
+                print(f"Skipping {k_pre} due to shape mismatch.")
+
+        # Update the remaining keys in the target model that were not present in the pre-trained model
+        for k in state_dict_smaat_unet.keys():
+            if k not in updated_state_dict:
+                updated_state_dict[k] = state_dict_smaat_unet[k]
+
+                # The state dictionary of SmaAt-UNet is updated with pre-trained Resnet-50 weights
         # freezes all except for last layer for fine-tuning
         model.load_state_dict(state_dict_smaat_unet)
 
