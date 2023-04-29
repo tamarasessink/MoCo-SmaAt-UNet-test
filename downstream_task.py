@@ -154,53 +154,44 @@ if __name__ == "__main__":
 
     # Load SmaAt-UNet
     model = SmaAt_UNet(n_channels=3, n_classes=21)
-    # print("=> creating model '{}'".format(model))
 
-    # load from pre-trained, before DistributedDataParallel constructor, this uses the parameters trained in the pre-training
-    pretrained = '/content/checkpoint_0008.pth.tar'
+    # load from pre-trained, this uses the parameters trained in the pre-training
+    pretrained = '/content/checkpoint_0010.pth.tar'
     if os.path.isfile(pretrained):
         print("=> loading checkpoint '{}'".format(pretrained))
         checkpoint = torch.load(pretrained, map_location="cpu")
 
-        # rename moco pre-trained keys
-
+        # Load the pre-trained state dictionary and the target model's state dictionary
         state_dict_pre = checkpoint["state_dict"]
         state_dict_smaat_unet = model.state_dict()
+
+        # Create a mapping dictionary that maps layer where the names correspond
+        mapping_dict_pre = {k.replace("module.encoder_q.", ""): k for k in state_dict_pre.keys()}
+        mapping_dict_smaat_unet = {k: k for k in state_dict_smaat_unet.keys()}
 
         # Create a new dictionary to store the updated keys
         updated_state_dict = {}
 
-        for k_pre, k_smaat_unet in zip(state_dict_pre.keys(), state_dict_smaat_unet.keys()):
-            # Remove the "module.encoder_q." prefix from the pre-trained model's keys
-            k_pre_updated = k_pre.replace("module.encoder_q.", "")
-
-            # Check if the shapes match and skip the fully connected layer of the pre-trained model
-            if "fc" in k_pre:
+        # Iterate over the layer names and map the weights to layers with matching names
+        for layer_name in mapping_dict_pre.keys():
+            # Skip the fully connected layer of the pre-trained model, this is not in the target model
+            if "fc" in layer_name:
                 continue
 
-            # If the shapes match, copy the weights from the pre-trained model to the new dictionary
-            if state_dict_smaat_unet[k_smaat_unet].shape == state_dict_pre[k_pre].shape:
-                updated_state_dict[k_smaat_unet] = state_dict_pre[k_pre]
-                print(f"{k_pre} mapped to {k_smaat_unet}")
+            # Check if the layer names match and if the shapes match
+            if layer_name in mapping_dict_smaat_unet and state_dict_pre[mapping_dict_pre[layer_name]].shape == state_dict_smaat_unet[mapping_dict_smaat_unet[layer_name]].shape:
+                updated_state_dict[mapping_dict_smaat_unet[layer_name]] = state_dict_pre[mapping_dict_pre[layer_name]]
+                print(f"{mapping_dict_pre[layer_name]} mapped to {mapping_dict_smaat_unet[layer_name]}")
             else:
-                print(f"Skipping {k_pre} due to shape mismatch.")
+                print(f"Skipping {layer_name} due to mismatched shape or missing in the target model.")
 
         # Update the remaining keys in the target model that were not present in the pre-trained model
         for k in state_dict_smaat_unet.keys():
             if k not in updated_state_dict:
                 updated_state_dict[k] = state_dict_smaat_unet[k]
 
-                # The state dictionary of SmaAt-UNet is updated with pre-trained Resnet-50 weights
-        # freezes all except for last layer for fine-tuning
-        model.load_state_dict(state_dict_smaat_unet)
-
-        # freeze all layers but the last fc
-        for name, param in model.named_parameters():
-            if name not in ["fc.weight", "fc.bias"]:
-                param.requires_grad = False
-            print("=> loaded pre-trained model '{}'".format(pretrained))
-        else:
-            print("=> no checkpoint found at '{}'".format(pretrained))
+        # Update the target model's state dictionary with the updated state dictionary, so that we don't miss any layer
+        model.load_state_dict(updated_state_dict)
 
     # Move model to device
     model.to(dev)
