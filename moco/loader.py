@@ -1,5 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from PIL import ImageFilter
+from PIL import ImageFilter, Image
 import random
 
 
@@ -10,8 +10,8 @@ class TwoCropsTransform:
         self.base_transform = base_transform
 
     def __call__(self, x):
-        q = self.base_transform(x)
-        k = self.base_transform(x)
+        q = self.base_transform(Image.fromarray(x))
+        k = self.base_transform(Image.fromarray(x))
         return [q, k]
 
 

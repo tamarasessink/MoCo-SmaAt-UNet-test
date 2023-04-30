@@ -28,6 +28,7 @@ import pylab as plt
 import numpy as np
 from PIL import Image
 from torch.utils import data
+from utils import dataset_precip
 # from models.SmaAt_UNet import SmaAt_UNet
 # from models import unet_precip_regression_lightning as unet_regr
 import tensorflow as tf
@@ -36,14 +37,14 @@ import moco.loader
 import moco.builder
 import moco.dataset
 import data
-from models.SmaAt_Unet_pre_training import SmaAt_UNet_pre
+from models.SmaAt_UNet_pre import SmaAt_UNet_pre
 
 # os.environ.pop('LD_PRELOAD', None)
 TF_ENABLE_ONEDNN_OPTS=0
 
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('data', metavar='DIR', default='/content/drive/MyDrive/',
+parser.add_argument('data', metavar='DIR', default="/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5",
                     help='path to dataset')
 # parser.add_argument('-a', '--arch', metavar='ARCH', default='SmaAt_UNet',
 #                     choices=model_names,
@@ -167,9 +168,9 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
-    print("=> creating model '{}'".format(SmaAt_UNet_pre(n_channels=3, n_classes=128)))
+    print("=> creating model '{}'".format(SmaAt_UNet_pre(n_channels = 12, n_classes = 128)))
     model = moco.builder.MoCo(
-        SmaAt_UNet_pre(n_channels=3, n_classes=128),
+        SmaAt_UNet_pre(n_channels = 12, n_classes = 128),
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     print(model)
 
@@ -229,9 +230,9 @@ def main_worker(gpu, ngpus_per_node, args):
     cudnn.benchmark = True
 
     # Data loading code
-    f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
-    traindir = f['/train/images']
-    training_generator = data.DataGenerator(traindir, 1, 12)
+    dataset = '/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5'
+    # traindir = f['/train/images']
+    # training_generator = data.DataGenerator(traindir, 1, 12)
 
     if args.aug_plus:
         # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
@@ -255,34 +256,43 @@ def main_worker(gpu, ngpus_per_node, args):
             transforms.ToTensor()
         ]
 
-    trainlen = traindir.shape[0]
+    # trainlen = traindir.shape[0]
 
-    for num in range(0, trainlen):
-        x, y = training_generator[num]
-        stack = x.squeeze()
-        i = 0
-        image_folder = "/image"+ str(num)
-        directory = "images"+ image_folder
-        if not os.path.exists(directory):
-          os.makedirs(directory)
+    # for num in range(0, trainlen):
+    #     x, y = training_generator[num]
+    #     stack = x.squeeze()
+    #     i = 0
+    #     image_folder = "/image"+ str(num)
+    #     directory = "images"+ image_folder
+    #     if not os.path.exists(directory):
+    #       os.makedirs(directory)
 
-        while (i < 12):
-            min_val = np.min(stack[i])
-            max_val = np.max(stack[i])
-            # normalizing the data
-            normalized = (stack[i] - min_val) / (max_val - min_val) * 255.0
-            image = Image.fromarray(np.uint8(normalized))
-            image_num = "/image"+ i *'I'+ ".jpeg"
-            if not os.path.exists(image_num):
-              plt.imsave(directory+image_num, image)
-            i = i + 1
+    #     while (i < 12):
+    #         min_val = np.min(stack[i])
+    #         max_val = np.max(stack[i])
+    #         # normalizing the data
+    #         normalized = (stack[i] - min_val) / (max_val - min_val) * 255.0
+    #         image = Image.fromarray(np.uint8(normalized))
+    #         image_num = "/image"+ i *'I'+ ".jpeg"
+    #         if not os.path.exists(image_num):
+    #           plt.imsave(directory+image_num, image)
+    #         i = i + 1
 
     # train_dataset = aug_q, aug_k
     # this is tuple class <0, 1>
     # inside the typle class is a ndarray class (len of aug_q)
-    train_dataset = datasets.ImageFolder(
-        'images', moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
-    )
+    # train_dataset = datasets.ImageFolder(
+    #     'images', moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
+    # )
+
+    two_crops_transform = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
+
+    train_dataset = dataset_precip.precipitation_maps_oversampled_h5(
+                in_file=dataset, num_input_images=12,
+                num_output_images=6, train=True, transform = False
+            )
+    train_dataset.transform = two_crops_transform
+
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -305,7 +315,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                                     and args.rank % ngpus_per_node == 0):
             save_checkpoint({
                 'epoch': epoch + 1,
-                'arch': SmaAt_UNet_pre(n_channels=3, n_classes=128),
+                'arch': SmaAt_UNet_pre(n_channels = 12, n_classes = 128),
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
             }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
@@ -331,6 +341,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     for i, (images, _) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
+        # for i in range(len(images)):
+        #     images[i] = tuple(img.cuda(args.gpu, non_blocking=True) for img in images[i])
         if args.gpu is not None:
             images[0] = images[0].cuda(args.gpu, non_blocking=True)
             images[1] = images[1].cuda(args.gpu, non_blocking=True)

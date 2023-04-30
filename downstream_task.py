@@ -115,7 +115,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl,
 
 if __name__ == "__main__":
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    batch_size = 64
+    batch_size = 6
     learning_rate = 0.001
     epochs = 200
     earlystopping = 30
@@ -153,7 +153,7 @@ if __name__ == "__main__":
                                            pin_memory=True)
 
     # Load SmaAt-UNet
-    model = SmaAt_UNet(n_channels=3, n_classes=21)
+    model = SmaAt_UNet(n_channels=12, n_classes=1)
 
     # load from pre-trained, this uses the parameters trained in the pre-training
     pretrained = '/content/checkpoint_0010.pth.tar'
