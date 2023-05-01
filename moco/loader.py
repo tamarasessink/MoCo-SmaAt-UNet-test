@@ -1,6 +1,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from PIL import ImageFilter, Image
 import random
+import numpy as np
 
 
 class TwoCropsTransform:
@@ -10,8 +11,10 @@ class TwoCropsTransform:
         self.base_transform = base_transform
 
     def __call__(self, x):
-        q = self.base_transform(Image.fromarray(x))
-        k = self.base_transform(Image.fromarray(x))
+        img = x.astype(np.uint8)
+        img = Image.fromarray(img)
+        q = self.base_transform(img)
+        k = self.base_transform(img)
         return [q, k]
 
 

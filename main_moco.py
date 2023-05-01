@@ -8,7 +8,7 @@ import random
 import shutil
 import time
 import warnings
-from numpy import asarray
+from numpy import False_, asarray
 from numpy import savetxt
 
 import h5py as h5py
@@ -29,6 +29,7 @@ import numpy as np
 from PIL import Image
 from torch.utils import data
 from utils import dataset_precip
+from torch.nn import Module
 # from models.SmaAt_UNet import SmaAt_UNet
 # from models import unet_precip_regression_lightning as unet_regr
 import tensorflow as tf
@@ -37,14 +38,14 @@ import moco.loader
 import moco.builder
 import moco.dataset
 import data
-from models.SmaAt_UNet_pre import SmaAt_UNet_pre
+from models.SmaAt_Unet_pre_training import SmaAt_UNet_pre
 
 # os.environ.pop('LD_PRELOAD', None)
-TF_ENABLE_ONEDNN_OPTS=0
-
+TF_ENABLE_ONEDNN_OPTS = 0
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('data', metavar='DIR', default="/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5",
+parser.add_argument('data', metavar='DIR',
+                    default="/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5",
                     help='path to dataset')
 # parser.add_argument('-a', '--arch', metavar='ARCH', default='SmaAt_UNet',
 #                     choices=model_names,
@@ -168,9 +169,9 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
-    print("=> creating model '{}'".format(SmaAt_UNet_pre(n_channels = 12, n_classes = 128)))
+    print("=> creating model '{}'".format(SmaAt_UNet_pre(n_channels=12, n_classes=128)))
     model = moco.builder.MoCo(
-        SmaAt_UNet_pre(n_channels = 12, n_classes = 128),
+        SmaAt_UNet_pre(n_channels=12, n_classes=128),
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     print(model)
 
@@ -285,24 +286,31 @@ def main_worker(gpu, ngpus_per_node, args):
     #     'images', moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
     # )
 
+    # print(len(train_dataset))
+
     two_crops_transform = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
     train_dataset = dataset_precip.precipitation_maps_oversampled_h5(
-                in_file=dataset, num_input_images=12,
-                num_output_images=6, train=True, transform = False
-            )
-    train_dataset.transform = two_crops_transform
-
+        in_file=dataset, num_input_images=12,
+        num_output_images=6, train=True, transform=two_crops_transform
+    )
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     else:
         train_sampler = None
 
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=args.batch_size,
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=64,
                                                shuffle=(train_sampler is None),
-                                               num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True,)
+                                               num_workers=args.workers, pin_memory=True, sampler=train_sampler,
+                                               drop_last=True)
 
+    data_iter = iter(train_loader)
+    first_batch = next(data_iter)
+
+    # Check the type and shape of the data
+    print(type(first_batch[0]))  # should be list
+    print(len(first_batch[0]))  # number of images in the list
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -315,7 +323,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                                     and args.rank % ngpus_per_node == 0):
             save_checkpoint({
                 'epoch': epoch + 1,
-                'arch': SmaAt_UNet_pre(n_channels = 12, n_classes = 128),
+                'arch': SmaAt_UNet_pre(n_channels=12, n_classes=128),
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
             }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
@@ -339,6 +347,9 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
     # images contains (q,k) so two random augmented versions of same image
     for i, (images, _) in enumerate(train_loader):
+        print(type(images[0]))
+        print(images[0].shape)
+        print(f"Batch {i}, images size: {len(images[0])}")
         # measure data loading time
         data_time.update(time.time() - end)
         # for i in range(len(images)):
@@ -350,6 +361,10 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         # compute output = predict similarity score for l_pos and l_neg
         # target =  are all 0 because there are no class labels in the SSL, but we need labels for the loss function
         # it is not really used, but we need an argument to let the loss function work
+        # batch_size, num_images, channels, height, width = images[0].shape
+        # images[0] = images[0].view(batch_size, -1, height, width)
+        # batch_size, num_images, channels, height, width = images[1].shape
+        # images[1] = images[1].view(batch_size, -1, height, width)
         output, target = model(im_q=images[0], im_k=images[1])
         # target.shape torch.Size([256]) all 0's
         # output.shape torch.Size([256, 65537])
@@ -452,6 +467,7 @@ def accuracy(output, target, topk=(1,)):
             correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
+
 
 
 if __name__ == '__main__':
