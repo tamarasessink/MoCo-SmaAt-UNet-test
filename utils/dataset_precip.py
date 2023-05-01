@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset
 import h5py
 import numpy as np
+from PIL import Image
 
 
 class precipitation_maps_h5(Dataset):
@@ -64,34 +65,34 @@ class precipitation_maps_oversampled_h5(Dataset):
         if self.dataset is None:
             self.dataset = h5py.File(self.file_name, 'r', rdcc_nbytes=1024**3)["train" if self.train else "test"]['images']
         imgs = np.array(self.dataset[index], dtype="float32")
-        # (18,288,288)
 
-        # Handle each image separately
-        first_views = []
-        second_views = []
-        input_img = imgs[:self.num_input]
-        if self.transform is not None:
-            for img in input_img:
-                # Apply transform
-                transformed_img1, transformed_img2 = self.transform(img)
-                first_views.append(transformed_img1)
-                second_views.append(transformed_img2)
+        # add transforms to each image separately
+        transformed_images = []
+        for img in imgs[:12]:
+            if self.transform is not None:
+                # normalize first
+                img = (img - img.min()) / (img.max() - img.min()) * 255.0
+                img = Image.fromarray(img.astype(np.uint8), mode='L')
+                tensor1, tensor2 = self.transform(img)
+                stacked_tensors = torch.stack([tensor1, tensor2], dim=0)
+                transformed_images.append(stacked_tensors.numpy())
+            # print(len(transformed_images))
+            # print(type(transformed_images[0]))
 
-        # Convert to tensor
-        first_views = torch.stack(first_views, dim=0)
-        second_views = torch.stack(second_views, dim=0)
+        # stack the 12 channels together
+        # input_img = torch.stack(transformed_images[:self.num_input], dim=0)
+        input_img = (np.stack([x[0] for x in transformed_images], axis=0).squeeze(1),
+             np.stack([x[1] for x in transformed_images], axis=0).squeeze(1))
 
-        # Combine the two views
-        combined_views = torch.stack((first_views, second_views), dim=1)
-        combined_views = combined_views.view(-1, *combined_views.shape[2:])
+        target_img = transformed_images[-1]
 
-        target_img = imgs[-1]
-        print(len(combined_views))
 
-        return combined_views, target_img
+        return input_img, target_img
 
     def __len__(self):
         return self.samples
+
+
 
 
 class precipitation_maps_classification_h5(Dataset):

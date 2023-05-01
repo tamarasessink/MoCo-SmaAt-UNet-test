@@ -22,6 +22,7 @@ import torch.multiprocessing as mp
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
+from torchvision.transforms import ToPILImage
 import torchvision.datasets as datasets
 import torchvision.models as models
 import pylab as plt
@@ -52,7 +53,7 @@ parser.add_argument('data', metavar='DIR',
 #                     help='model architecture: SmaAth-unet')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=20, type=int, metavar='N',
+parser.add_argument('--epochs', default=10, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -231,6 +232,7 @@ def main_worker(gpu, ngpus_per_node, args):
     cudnn.benchmark = True
 
     # Data loading code
+    # f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
     dataset = '/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5'
     # traindir = f['/train/images']
     # training_generator = data.DataGenerator(traindir, 1, 12)
@@ -285,6 +287,9 @@ def main_worker(gpu, ngpus_per_node, args):
     # train_dataset = datasets.ImageFolder(
     #     'images', moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
     # )
+    # print(len(train_dataset))
+    # print(len(train_dataset[0][0]))
+    # print(train_dataset[0][1])
 
     # print(len(train_dataset))
 
@@ -300,17 +305,22 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         train_sampler = None
 
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=64,
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=args.batch_size,
                                                shuffle=(train_sampler is None),
                                                num_workers=args.workers, pin_memory=True, sampler=train_sampler,
                                                drop_last=True)
 
-    data_iter = iter(train_loader)
-    first_batch = next(data_iter)
+    # train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=64,
+    #                                            shuffle=(train_sampler is None),
+    #                                            num_workers=args.workers, pin_memory=True, sampler=train_sampler,
+    #                                            drop_last=True, collate_fn=my_collate)
+
+    # data_iter = iter(train_loader)
+    # first_batch = next(data_iter)
 
     # Check the type and shape of the data
-    print(type(first_batch[0]))  # should be list
-    print(len(first_batch[0]))  # number of images in the list
+    # print(type(first_batch[0]))  # should be list
+    # print("len:",len(first_batch[0]))  # number of images in the list
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -347,9 +357,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
     # images contains (q,k) so two random augmented versions of same image
     for i, (images, _) in enumerate(train_loader):
-        print(type(images[0]))
-        print(images[0].shape)
-        print(f"Batch {i}, images size: {len(images[0])}")
         # measure data loading time
         data_time.update(time.time() - end)
         # for i in range(len(images)):
@@ -467,7 +474,6 @@ def accuracy(output, target, topk=(1,)):
             correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
-
 
 
 if __name__ == '__main__':

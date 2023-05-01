@@ -13,7 +13,7 @@ class UNet_base(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = argparse.ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument('--model', type=str, default='SmaAt_UNet',
-                            choices=['UNet', 'UNetDS', 'UNet_Attention', 'UNetDS_Attention'])
+                            choices=['SmaAt_UNet','UNet', 'UNetDS', 'UNet_Attention', 'UNetDS_Attention'])
         parser.add_argument('--n_channels', type=int, default=12)
         parser.add_argument('--n_classes', type=int, default=1)
         parser.add_argument('--kernels_per_layer', type=int, default=1)
