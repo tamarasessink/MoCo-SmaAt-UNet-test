@@ -1,4 +1,5 @@
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateLogger, EarlyStopping
 from pytorch_lightning import loggers
 import argparse
@@ -39,6 +40,46 @@ def train_regression(hparams):
         net = unet_regr.UNetDS(hparams=hparams)
     elif hparams.model == "SmaAt_UNet":
         net = SmaAt_UNet(n_channels = args.n_channels, n_classes = args.n_classes)
+        # load from pre-trained, this uses the parameters trained in the pre-training
+        pretrained = '/content/checkpoint_0009.pth.tar'
+        if os.path.isfile(pretrained):
+            print("=> loading checkpoint '{}'".format(pretrained))
+            checkpoint = torch.load(pretrained, map_location="cpu")
+
+            # Load the pre-trained state dictionary and the target model's state dictionary
+            state_dict_pre = checkpoint["state_dict"]
+            state_dict_smaat_unet = net.state_dict()
+
+            # Create a mapping dictionary that maps layer where the names correspond
+            mapping_dict_pre = {k.replace("module.encoder_q.", ""): k for k in state_dict_pre.keys()}
+            mapping_dict_smaat_unet = {k: k for k in state_dict_smaat_unet.keys()}
+
+            # Create a new dictionary to store the updated keys
+            updated_state_dict = {}
+
+            # Iterate over the layer names and map the weights to layers with matching names
+            for layer_name in mapping_dict_pre.keys():
+                # Skip the fully connected layer of the pre-trained model, this is not in the target model
+                if "fc" in layer_name:
+                    continue
+
+                # Check if the layer names match and if the shapes match
+                if layer_name in mapping_dict_smaat_unet and state_dict_pre[mapping_dict_pre[layer_name]].shape == \
+                        state_dict_smaat_unet[mapping_dict_smaat_unet[layer_name]].shape:
+                    updated_state_dict[mapping_dict_smaat_unet[layer_name]] = state_dict_pre[
+                        mapping_dict_pre[layer_name]]
+                    print(f"{mapping_dict_pre[layer_name]} mapped to {mapping_dict_smaat_unet[layer_name]}")
+                else:
+                    print(f"Skipping {layer_name} due to mismatched shape or missing in the target model.")
+
+            # Update the remaining keys in the target model that were not present in the pre-trained model
+            for k in state_dict_smaat_unet.keys():
+                if k not in updated_state_dict:
+                    updated_state_dict[k] = state_dict_smaat_unet[k]
+
+            # Update the target model's state dictionary with the updated state dictionary, so that we don't miss any layer
+            net.load_state_dict(updated_state_dict)
+
     else:
         raise NotImplementedError(f"Model '{hparams.model}' not implemented")
 

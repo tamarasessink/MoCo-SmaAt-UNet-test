@@ -70,9 +70,9 @@ class precipitation_maps_oversampled_h5(Dataset):
         transformed_images = []
         for img in imgs[:12]:
             if self.transform is not None:
-                # normalize first
                 img = (img - img.min()) / (img.max() - img.min()) * 255.0
                 img = Image.fromarray(img.astype(np.uint8), mode='L')
+                #normalize first
                 tensor1, tensor2 = self.transform(img)
                 stacked_tensors = torch.stack([tensor1, tensor2], dim=0)
                 transformed_images.append(stacked_tensors.numpy())
