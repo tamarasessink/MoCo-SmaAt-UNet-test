@@ -1,6 +1,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from PIL import ImageFilter, Image
 import random
+import cv2
 import numpy as np
 
 
@@ -24,5 +25,6 @@ class GaussianBlur(object):
 
     def __call__(self, x):
         sigma = random.uniform(self.sigma[0], self.sigma[1])
-        x = x.filter(ImageFilter.GaussianBlur(radius=sigma))
-        return x
+        #x = x.filter(ImageFilter.GaussianBlur(radius=sigma))
+        #return x
+        return cv2.GaussianBlur(x,(0,0),sigma)
