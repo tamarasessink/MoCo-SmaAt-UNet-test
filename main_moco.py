@@ -53,7 +53,7 @@ parser.add_argument('data', metavar='DIR',
 #                     help='model architecture: SmaAth-unet')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=10, type=int, metavar='N',
+parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -295,7 +295,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     two_crops_transform = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
-    train_dataset = dataset_precip.precipitation_maps_oversampled_h5(
+    train_dataset = dataset_precip.precipitation_maps_oversampled_h5_pre(
         in_file=dataset, num_input_images=12,
         num_output_images=6, train=True, transform=two_crops_transform
     )
@@ -337,6 +337,14 @@ def main_worker(gpu, ngpus_per_node, args):
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
             }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
+
+            # Check if the current epoch is 200
+            if epoch == 199:
+                # Save the model to Google Drive
+                save_path = '/content/drive/MyDrive/models/checkpoint_{:03d}.pth.tar'.format(epoch + 1)
+                if not os.path.exists(os.path.dirname(save_path)):
+                    os.makedirs(os.path.dirname(save_path))
+                torch.save(model.state_dict(), save_path)
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):

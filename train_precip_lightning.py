@@ -4,7 +4,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateLogger, Ear
 from pytorch_lightning import loggers
 import argparse
 from models import unet_precip_regression_lightning as unet_regr
-from models import SmaAt_UNet
+from models.SmaAt_UNet import SmaAt_UNet
 import torchsummary
 import os
 
@@ -18,8 +18,6 @@ def get_batch_size(hparams):
         net = unet_regr.UNet(hparams=hparams)
     elif hparams.model == "UNetDS":
         net = unet_regr.UNetDS(hparams=hparams)
-    elif hparams.model == "SmaAt_UNet":
-        net = SmaAt_UNet(n_channels = args.n_channels, n_classes = args.n_classes)
     else:
         raise NotImplementedError(f"Model '{hparams.model}' not implemented")
 
@@ -32,16 +30,8 @@ def get_batch_size(hparams):
 def train_regression(hparams):
     if hparams.model == "UNetDS_Attention":
         net = unet_regr.UNetDS_Attention(hparams=hparams)
-    elif hparams.model == "UNet_Attention":
-        net = unet_regr.UNet_Attention(hparams=hparams)
-    elif hparams.model == "UNet":
-        net = unet_regr.UNet(hparams=hparams)
-    elif hparams.model == "UNetDS":
-        net = unet_regr.UNetDS(hparams=hparams)
-    elif hparams.model == "SmaAt_UNet":
-        net = SmaAt_UNet(n_channels = args.n_channels, n_classes = args.n_classes)
-        # load from pre-trained, this uses the parameters trained in the pre-training
         pretrained = '/content/checkpoint_0009.pth.tar'
+        pretrained = os.path.join(os.getcwd(), pretrained)
         if os.path.isfile(pretrained):
             print("=> loading checkpoint '{}'".format(pretrained))
             checkpoint = torch.load(pretrained, map_location="cpu")
@@ -80,6 +70,12 @@ def train_regression(hparams):
             # Update the target model's state dictionary with the updated state dictionary, so that we don't miss any layer
             net.load_state_dict(updated_state_dict)
 
+    elif hparams.model == "UNet_Attention":
+        net = unet_regr.UNet_Attention(hparams=hparams)
+    elif hparams.model == "UNet":
+        net = unet_regr.UNet(hparams=hparams)
+    elif hparams.model == "UNetDS":
+        net = unet_regr.UNetDS(hparams=hparams)
     else:
         raise NotImplementedError(f"Model '{hparams.model}' not implemented")
 
@@ -88,7 +84,7 @@ def train_regression(hparams):
     default_save_path = "lightning/precip_regression"
 
     checkpoint_callback = ModelCheckpoint(
-        filepath=os.getcwd()+"/"+default_save_path+"/"+net.__class__.__name__+"/{epoch}-{val_loss:.6f}",
+        filepath='checkpoints/comparision/'+net.__class__.__name__+"/{epoch}-{val_loss:.6f}",
         save_top_k=-1,
         verbose=False,
         monitor='val_loss',
@@ -101,7 +97,8 @@ def train_regression(hparams):
     earlystopping_callback = EarlyStopping(monitor='val_loss',
                                            mode='min',
                                            patience=hparams.es_patience,  # is effectively half (due to a bug in pytorch-lightning)
-                                           )
+                                          )
+
     trainer = pl.Trainer(fast_dev_run=hparams.fast_dev_run,
                          gpus=hparams.gpus,
                          weights_summary=None,
@@ -140,6 +137,7 @@ if __name__ == "__main__":
     # args.val_check_interval = 0.25
     # args.overfit_pct = 0.1
     args.kernels_per_layer = 2
+    args.epochs = 1
     args.use_oversampled_dataset = True
     args.dataset_folder = "/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5"
     # args.resume_from_checkpoint = f"lightning/precip_regression/{args.model}/UNetDS_Attention.ckpt"

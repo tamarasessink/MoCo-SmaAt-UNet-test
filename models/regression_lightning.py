@@ -91,6 +91,7 @@ class UNet_base(pl.LightningModule):
                 "progress_bar": {"test_loss": avg_loss}}
 
 
+
 class Precip_regression_base(UNet_base):
     @staticmethod
     def add_model_specific_args(parent_parser):
