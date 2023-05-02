@@ -53,7 +53,7 @@ parser.add_argument('data', metavar='DIR',
 #                     help='model architecture: SmaAth-unet')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=200, type=int, metavar='N',
+parser.add_argument('--epochs', default=30, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -374,12 +374,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
 
         # compute output = predict similarity score for l_pos and l_neg
-        # target =  are all 0 because there are no class labels in the SSL, but we need labels for the loss function
-        # it is not really used, but we need an argument to let the loss function work
-        # batch_size, num_images, channels, height, width = images[0].shape
-        # images[0] = images[0].view(batch_size, -1, height, width)
-        # batch_size, num_images, channels, height, width = images[1].shape
-        # images[1] = images[1].view(batch_size, -1, height, width)
         output, target = model(im_q=images[0], im_k=images[1])
         # target.shape torch.Size([256]) all 0's
         # output.shape torch.Size([256, 65537])
