@@ -11,7 +11,7 @@ Use the [create_dataset.py] to create the two datasets used from the original da
 
 This implementation only supports **multi-gpu**, **DistributedDataParallel** training, which is faster and simpler; single-gpu or DataParallel training is not supported.
 
-To do unsupervised pre-training of a ResNet-50 model on ImageNet in an 8-gpu machine, run in google colab:
+To do unsupervised pre-training of a SmaAth_UNet model on the precipitation dataset, run in google colab:
 ```
 !python /content/Master_Thesis/main_moco2.py \
   --lr 0.0075 \
@@ -22,12 +22,12 @@ This script uses all the default hyper-parameters as described in the MoCo v1 pa
 
 ### Downstream task Precipitation Nowcasting using a Small Attention-UNet Architecture
 
-### After the pre-training with main_moco.py the finetuning is done on the real task namely [train_precip_lightning.py]. The pre-trained weights are used for the finetuning/ downstream task, which can be run in google colab:
+After the pre-training with main_moco.py the finetuning is done on the real task namely [train_precip_lightning.py]. The pre-trained weights are used for the finetuning/ downstream task, which can be run in google colab:
 ```
 !python /content/Master_Thesis/train_precip_lightning.py --model 'SmaAt_UNet' --n_channels 12 --n_classes 1
 ```
 
-### After that the testing fase can take place, by running:
+After that the testing fase can take place, by running:
 ```
 !python /content/Master_Thesis/test_precip_lightning.py
 ```
