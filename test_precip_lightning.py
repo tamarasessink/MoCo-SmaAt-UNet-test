@@ -175,7 +175,7 @@ def get_model_losses(model_folder, data_file, loss, denormalize):
     test_losses["Persistence"] = persistence_loss
     print(persistence_loss)
 
-    models = [m for m in os.listdir(model_folder) if ".ckpt" in m]
+    models = model_folder
     dataset = dataset_precip.precipitation_maps_oversampled_h5(
         in_file=data_file,
         num_input_images=12,
@@ -217,7 +217,8 @@ if __name__ == '__main__':
     loss = "mse"
     denormalize = True
     # Models that are compared should be in this folder (the ones with the lowest validation error)
-    model_folder = "/content/drive/MyDrive/lightning/precip_regression/checkpoints/comparision/UNetDS_Attention/"
+
+    model_folder = "/content/drive/MyDrive/lightning/precip_regression/checkpoints/comparision/UNetDS_Attention/UNetDS_Attention_rain_threshhold_50_epoch=99-val_loss=0.254829.ckpt"
     data_file = '/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5'
 
     # This changes whether to load or to run the model loss calculation
