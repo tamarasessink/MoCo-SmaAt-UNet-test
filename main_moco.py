@@ -234,8 +234,6 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data loading code
     # f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
     dataset = '/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5'
-    # traindir = f['/train/images']
-    # training_generator = data.DataGenerator(traindir, 1, 12)
 
     if args.aug_plus:
         # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
@@ -259,40 +257,6 @@ def main_worker(gpu, ngpus_per_node, args):
             transforms.ToTensor()
         ]
 
-    # trainlen = traindir.shape[0]
-
-    # for num in range(0, trainlen):
-    #     x, y = training_generator[num]
-    #     stack = x.squeeze()
-    #     i = 0
-    #     image_folder = "/image"+ str(num)
-    #     directory = "images"+ image_folder
-    #     if not os.path.exists(directory):
-    #       os.makedirs(directory)
-
-    #     while (i < 12):
-    #         min_val = np.min(stack[i])
-    #         max_val = np.max(stack[i])
-    #         # normalizing the data
-    #         normalized = (stack[i] - min_val) / (max_val - min_val) * 255.0
-    #         image = Image.fromarray(np.uint8(normalized))
-    #         image_num = "/image"+ i *'I'+ ".jpeg"
-    #         if not os.path.exists(image_num):
-    #           plt.imsave(directory+image_num, image)
-    #         i = i + 1
-
-    # train_dataset = aug_q, aug_k
-    # this is tuple class <0, 1>
-    # inside the typle class is a ndarray class (len of aug_q)
-    # train_dataset = datasets.ImageFolder(
-    #     'images', moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
-    # )
-    # print(len(train_dataset))
-    # print(len(train_dataset[0][0]))
-    # print(train_dataset[0][1])
-
-    # print(len(train_dataset))
-
     two_crops_transform = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
     train_dataset = dataset_precip.precipitation_maps_oversampled_h5_pre(
@@ -310,16 +274,6 @@ def main_worker(gpu, ngpus_per_node, args):
                                                num_workers=args.workers, pin_memory=True, sampler=train_sampler,
                                                drop_last=True)
 
-    # train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=64,
-    #                                            shuffle=(train_sampler is None),
-    #                                            num_workers=args.workers, pin_memory=True, sampler=train_sampler,
-    #                                            drop_last=True, collate_fn=my_collate)
-
-    # data_iter = iter(train_loader)
-    # first_batch = next(data_iter)
-
-    # Check the type and shape of the data
-    # print(type(first_batch[0]))  # should be list
     # print("len:",len(first_batch[0]))  # number of images in the list
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -339,9 +293,9 @@ def main_worker(gpu, ngpus_per_node, args):
             }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
 
             # Check if the current epoch is 200
-            if epoch == 199:
+            if epoch % 10 == 0:
                 # Save the model to Google Drive
-                save_path = '/content/drive/MyDrive/models/checkpoint_{:03d}.pth.tar'.format(epoch + 1)
+                save_path = '/content/drive/MyDrive/MoCo/checkpoint_{:03d}.pth.tar'.format(epoch + 1)
                 if not os.path.exists(os.path.dirname(save_path)):
                     os.makedirs(os.path.dirname(save_path))
                 torch.save(model.state_dict(), save_path)

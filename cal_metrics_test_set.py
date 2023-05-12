@@ -27,7 +27,7 @@ def get_metrics_from_model(model, test_dl, threshold=0.5):
             x = x.to("cuda")
             y_true = y_true.to("cuda")
             y_pred = model(x)
-            loss_model += loss_func(y_pred.squeeze() * factor, y_true.squeeze() * factor,
+            loss_model += loss_func(y_pred.squeeze() * factor, y_true * factor,
                                     reduction="sum") / y_true.size(0)
             # denormalize and convert from mm/5min to mm/h
             y_pred_adj = y_pred.squeeze() * 47.83 * 12
