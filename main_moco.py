@@ -53,7 +53,7 @@ parser.add_argument('data', metavar='DIR',
 #                     help='model architecture: SmaAth-unet')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=30, type=int, metavar='N',
+parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -96,11 +96,11 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
 # moco specific configs:
 parser.add_argument('--moco-dim', default=128, type=int,
                     help='feature dimension (default: 128)')
-parser.add_argument('--moco-k', default=65536, type=int,
+parser.add_argument('--moco-k', default=32768, type=int,
                     help='queue size; number of negative keys (default: 65536)')
 parser.add_argument('--moco-m', default=0.999, type=float,
                     help='moco momentum of updating key encoder (default: 0.999)')
-parser.add_argument('--moco-t', default=0.07, type=float,
+parser.add_argument('--moco-t', default=0.14, type=float,
                     help='softmax temperature (default: 0.07)')
 
 # options for moco v2

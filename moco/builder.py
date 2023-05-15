@@ -9,7 +9,7 @@ class MoCo(nn.Module):
     https://arxiv.org/abs/1911.05722
     """
 
-    def __init__(self, base_encoder, dim=128, K=65536, m=0.999, T=0.07, mlp=False):
+    def __init__(self, base_encoder, dim=128, K=32768, m=0.999, T=0.07, mlp=False):
         """
         dim: feature dimension (default: 128)
         K: queue size; number of negative keys (default: 65536)
@@ -27,13 +27,13 @@ class MoCo(nn.Module):
         self.encoder_q = base_encoder
         self.encoder_k = base_encoder
 
-        if mlp:  # hack: brute-force replacement
-            dim_mlp = self.encoder_q.fc.weight.shape[1]
+        if mlp:
+            dim_mlp = self.encoder_q.fc.in_features  # Get the number of input features for the fc layer
             self.encoder_q.fc = nn.Sequential(
-                nn.Linear(512, dim_mlp), nn.ReLU(), self.encoder_q.fc
+                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.fc
             )
             self.encoder_k.fc = nn.Sequential(
-                nn.Linear(512, dim_mlp), nn.ReLU(), self.encoder_k.fc
+                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc
             )
 
         # self.encoder_q.fc = nn.Linear(512, dim)
