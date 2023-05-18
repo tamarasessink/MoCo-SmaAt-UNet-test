@@ -236,21 +236,18 @@ def main_worker(gpu, ngpus_per_node, args):
     dataset = '/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5'
 
     if args.aug_plus:
-        # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
         augmentation = [
             transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
-            transforms.RandomRotation(20),
+            transforms.RandomRotation(degrees=15),
             transforms.ToTensor(),
         ]
     else:
-        # MoCo v1's aug: the same as InstDisc https://arxiv.org/abs/1805.01978
         augmentation = [
             transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
-            transforms.RandomRotation(20),
             transforms.ToTensor(),
         ]
 
@@ -284,7 +281,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                                     and args.rank % ngpus_per_node == 0):
             save_checkpoint({
                 'epoch': epoch + 1,
-                'arch': SmaAt_UNet_pre(n_channels=12, n_classes=128),
+                'arch': 'SmaAt_UNet_pre(n_channels=12, n_classes=128)',
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
             }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
@@ -292,10 +289,13 @@ def main_worker(gpu, ngpus_per_node, args):
             # Check if the current epoch is 200
             if epoch % 10 == 0:
                 # Save the model to Google Drive
-                save_path = '/content/drive/MyDrive/MoCo/checkpoint_{:03d}.pth.tar'.format(epoch + 1)
-                if not os.path.exists(os.path.dirname(save_path)):
-                    os.makedirs(os.path.dirname(save_path))
-                torch.save(model.state_dict(), save_path)
+                save_checkpoint({
+                    'epoch': epoch + 1,
+                    'arch': 'SmaAt_UNet_pre(n_channels=12, n_classes=128)',
+                    'state_dict': model.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                }, is_best=False, filename='/content/drive/MyDrive/MoCo/checkpoint_{:04d}.pth.tar'.format(epoch))
+
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
