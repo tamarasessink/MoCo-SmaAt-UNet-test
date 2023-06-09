@@ -1,8 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from PIL import ImageFilter, Image
 import random
-import cv2
-import numpy as np
 
 
 class TwoCropsTransform:

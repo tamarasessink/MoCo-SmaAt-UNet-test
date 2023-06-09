@@ -8,6 +8,7 @@ import os
 import pickle
 import numpy as np
 from torch import nn
+from sklearn.metrics import roc_auc_score
 
 
 def get_metrics_from_model(model, test_dl, threshold=0.5):
@@ -27,6 +28,7 @@ def get_metrics_from_model(model, test_dl, threshold=0.5):
             x = x.to("cuda")
             y_true = y_true.to("cuda")
             y_pred = model(x)
+            #loss_model += loss_func(y_pred.squeeze() * factor, y_true.squeeze() * factor, reduction="sum") / y_true.size(0)
             loss_model += loss_func(y_true.squeeze() * factor, y_pred.squeeze() * factor, reduction="mean") / y_true.size(0)
             # denormalize and convert from mm/5min to mm/h
             y_pred_adj = y_pred.squeeze() * 47.83 * 12
@@ -50,9 +52,10 @@ def get_metrics_from_model(model, test_dl, threshold=0.5):
         csi = total_tp / (total_tp + total_fn + total_fp)
         far = total_fp / (total_tp + total_fp)
         hss = ((total_tp * total_tn) - (total_fn * total_fp)) / (
-                    (total_tp + total_fn) * (total_fn + total_tn) + (total_tp + total_fp) * (total_fp + total_tn))
+                (total_tp + total_fn) * (total_fn + total_tn) + (total_tp + total_fp) * (total_fp + total_tn))
 
-    return np.array(loss_model.cpu()), precision, recall, accuracy, f1, csi, far, hss
+    return np.array(loss_model.cpu()), precision, recall, accuracy, f1, csi, far, hss, auc_model_end
+
 
 if __name__ == '__main__':
     dataset = dataset_precip.precipitation_maps_oversampled_h5(
@@ -69,8 +72,8 @@ if __name__ == '__main__':
     )
 
     model_folder = "/content/drive/MyDrive/lightning/precip_regression/checkpoints/comparision"
-    
-    model_file = "UNetDS_Attention/UNetDS_Attention_rain_threshhold_50_epoch=99-val_loss=0.254829.ckpt"  # change this to the desired checkpoint file
+
+    model_file = "UNetDS_Attention/UNetDS_Attention_rain_threshhold_50_epoch=40-val_loss=0.353836.ckpt"  # change this to the desired checkpoint file
     threshold = 0.5  # mm/h
 
     model, model_name = model_classes.get_model_class(model_file)
@@ -78,7 +81,7 @@ if __name__ == '__main__':
     model.to("cuda").eval()
 
     model_metrics = dict()
-    loss_model, precision, recall, accuracy, f1, csi, far, hss = get_metrics_from_model(model, test_dl, threshold)
+    loss_model, precision, recall, accuracy, f1, csi, far, hss, auc = get_metrics_from_model(model, test_dl, threshold)
     model_metrics[model_name] = {"loss_model": loss_model,
                                  "Precision": precision,
                                  "Recall": recall,
@@ -86,7 +89,7 @@ if __name__ == '__main__':
                                  "F1": f1,
                                  "CSI": csi,
                                  "FAR": far,
-                                 "HSS": hss}
+                                 "HSS": hss }
     print(model_name, model_metrics[model_name])
 
     with open(model_folder + f"/model_metrics_{threshold}mmh_{model_name}.pkl", "wb") as f:

@@ -2,18 +2,18 @@ from torch import nn
 from models.unet_parts import OutConv
 from models.unet_parts_depthwise_separable import DoubleConvDS, UpDS, DownDS
 from models.layers import CBAM
-from models.regression_lightning import Precip_regression_base
+# from models.regression_lightning import Precip_regression_base
 
 #TODO: add copyright
 
-class SmaAt_UNet(Precip_regression_base):
-    def __init__(self, hparams):
-      super(SmaAt_UNet, self).__init__(hparams=hparams)
-      self.n_channels = hparams.n_channels
-      self.n_classes = hparams.n_classes
-      kernels_per_layer = hparams.kernels_per_layer
-      self.bilinear = hparams.bilinear
-      reduction_ratio = hparams.reduction_ratio
+class SmaAt_UNet(nn.Module):
+    def __init__(self, n_channels, n_classes, kernels_per_layer=2, bilinear=True, reduction_ratio=16):
+      super(SmaAt_UNet, self).__init__()
+      self.n_channels = n_channels
+      self.n_classes = n_classes
+      kernels_per_layer = kernels_per_layer
+      self.bilinear = bilinear
+      reduction_ratio = reduction_ratio
 
       self.inc = DoubleConvDS(self.n_channels, 64, kernels_per_layer=kernels_per_layer)
       self.cbam1 = CBAM(64, reduction_ratio=reduction_ratio)

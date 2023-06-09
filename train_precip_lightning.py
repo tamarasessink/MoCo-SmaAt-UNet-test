@@ -1,3 +1,4 @@
+import numpy as np
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateLogger, EarlyStopping
@@ -6,8 +7,13 @@ import argparse
 from models import unet_precip_regression_lightning as unet_regr
 from models.SmaAt_UNet import SmaAt_UNet
 import torchsummary
+import random
 import os
 
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 def get_batch_size(hparams):
     if hparams.model == "UNetDS_Attention":
@@ -30,7 +36,7 @@ def get_batch_size(hparams):
 def train_regression(hparams):
     if hparams.model == "UNetDS_Attention":
         net = unet_regr.UNetDS_Attention(hparams=hparams)
-        pretrained = '/content/drive/MyDrive/models/checkpoint_0151_0.001.pth.tar'
+        pretrained = '/content/drive/MyDrive/models/checkpoint_0199 (1).pth.tar'
         pretrained = os.path.join(os.getcwd(), pretrained)
         if os.path.isfile(pretrained):
             print("=> loading checkpoint '{}'".format(pretrained))
@@ -84,20 +90,21 @@ def train_regression(hparams):
     default_save_path = "/content/drive/MyDrive/lightning/precip_regression"
 
     checkpoint_callback = ModelCheckpoint(
-        filepath='/content/drive/MyDrive/lightning/precip_regression/checkpoints/comparision/'+net.__class__.__name__+"/{epoch}-{val_loss:.6f}",
+        filepath='/content/drive/MyDrive/lightning/precip_regression/checkpoints/comparision/' + net.__class__.__name__ + "/{epoch}-{val_loss:.6f}",
         save_top_k=-1,
         verbose=False,
         monitor='val_loss',
         mode='min',
-        prefix=net.__class__.__name__+"_rain_threshhold_50_"
+        prefix=net.__class__.__name__ + "_rain_threshhold_50_"
     )
     lr_logger = LearningRateLogger()
     tb_logger = loggers.TensorBoardLogger(save_dir=default_save_path, name=net.__class__.__name__)
 
     earlystopping_callback = EarlyStopping(monitor='val_loss',
                                            mode='min',
-                                           patience=hparams.es_patience,  # is effectively half (due to a bug in pytorch-lightning)
-                                          )
+                                           patience=hparams.es_patience,
+                                           verbose=True
+                                           )
 
     trainer = pl.Trainer(fast_dev_run=hparams.fast_dev_run,
                          gpus=hparams.gpus,
@@ -137,10 +144,9 @@ if __name__ == "__main__":
     # args.val_check_interval = 0.25
     # args.overfit_pct = 0.1
     args.kernels_per_layer = 2
-    args.epochs = 100
     args.use_oversampled_dataset = True
     args.dataset_folder = "/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5"
-    # args.resume_from_checkpoint = f"lightning/precip_regression/{args.model}/UNetDS_Attention.ckpt"
+    # args.resume_from_checkpoint = f"/content/drive/MyDrive/lightning/precip_regression/checkpoints/comparision/UNetDS_Attention/UNetDS_Attention_rain_threshhold_50_epoch=69-val_loss=1.533363.ckpt"
 
     # args.batch_size = get_batch_size(hparams=args)
     train_regression(args)
