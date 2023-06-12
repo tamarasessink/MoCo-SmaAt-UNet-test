@@ -44,10 +44,10 @@ def run_cam(model, target_layers, device, test_dl):
     for x, y_true in tqdm(test_dl, leave=False):
         if image_count >= 5:
             break
-        y_true = y_true.cpu()
-        y_true = y_true.squeeze()
-        plt.imshow(y_true)
-        plt.savefig('orginal.png')
+        # y_true = y_true.cpu()
+        # y_true = y_true.squeeze()
+        # plt.imshow(y_true)
+        # plt.savefig('orginal.png')
         x = x.to(torch.device(device))
         output = model(x)
         mask = np.digitize((output[0][0] * 47.83 * 12).detach().cpu().numpy(), np.array([1.5]), right=True)
@@ -63,15 +63,15 @@ def run_cam(model, target_layers, device, test_dl):
 
                 cam_image.append(show_cam_on_image(image, grayscale_cam, use_rgb=True))
 
-        # fig, axes = plt.subplots(1, 5, figsize=(15, 3))
-        fig, axes = plt.subplots(1, 4, figsize=(25, 4))
-        image_count += 1
-        # axes[0].imshow(x[0][0].detach().cpu().numpy())
+        fig, axes = plt.subplots(1, 5, figsize=(15, 3))
+        # fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        # image_count += 1
         # axes[0].imshow(y_true[0].cpu().numpy())
-        # axes[1].imshow((output[0][0]).detach().cpu().numpy())
         # axes[0].set_title('Ground Truth', {'fontsize': 16})
-        # axes[0][2].imshow(mask_float)
+        # axes[1].imshow((output[0][0]).detach().cpu().numpy())
         # axes[1].set_title('Prediction', {'fontsize': 16})
+        # axes[2].imshow(mask_float)
+        # axes[2].set_title('Mask', {'fontsize': 16})
 
         # Encoder layers
         # axes[0].imshow(cam_image[0])
@@ -90,11 +90,12 @@ def run_cam(model, target_layers, device, test_dl):
         axes[0].set_title('Up1', {'fontsize': 16})
         axes[1].imshow(cam_image[5])
         axes[1].set_title('Up2', {'fontsize': 16})
+        axes[2].imshow(cam_image[8])
         axes[2].set_title('Up3', {'fontsize': 16})
-        axes[2].set_title('Up4', {'fontsize': 16})
-        axes[3].imshow(cam_image[8])
         axes[3].imshow(cam_image[12])
-
+        axes[3].set_title('Up4', {'fontsize': 16})
+        axes[4].imshow(y_true)
+        axes[4].set_title('Ground Truth', {'fontsize': 16})
         plt.savefig('heatmap.png')
         plt.show()
 
@@ -104,7 +105,7 @@ model = SmaAt_UNet(n_channels=12, n_classes=1)
 
 # Load the state dictionary from the checkpoint file
 checkpoint = torch.load(
-    "/content/drive/MyDrive/lightning/precip_regression/checkpoints/UNetDS_Attention_moco_wholeset/UNetDS_Attention_rain_threshhold_50_epoch=59-val_loss=0.179356.ckpt")
+    "/content/drive/MyDrive/UNetDS_Attention_rain_threshhold_50_epoch=52-val_loss=0.216322.ckpt")
 
 # Sometimes the state dictionary is stored under the 'state_dict' key in the checkpoint
 if 'state_dict' in checkpoint:

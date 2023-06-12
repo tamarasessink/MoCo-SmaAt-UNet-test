@@ -57,5 +57,23 @@ class SmaAt_UNet_pre(nn.Module):
         # return the feature vector
         return x
 
+    def extract_features(self, x):
+        x = self.inc(x)
+        x = self.down1(x)
+        x = self.down2(x)
+        x = self.down3(x)
+        x = self.down4(x)
+
+        x = self.cbam5(x)
+
+        # average pooling to get the correct output tensor size
+        x = self.avgpool(x)
+        flattened_x = torch.flatten(x, 1)
+        # fully connected layer
+        output = self.fc(flattened_x)
+
+        # return the final output and the feature vector
+        return output, flattened_x
+
 
 
