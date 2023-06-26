@@ -122,6 +122,7 @@ def train_regression(hparams):
 
 
 if __name__ == "__main__":
+    set_seed(42)
     parser = argparse.ArgumentParser()
 
     parser = unet_regr.Precip_regression_base.add_model_specific_args(parser)

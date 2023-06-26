@@ -100,7 +100,7 @@ parser.add_argument('--moco-k', default=65536, type=int,
                     help='queue size; number of negative keys (default: 65536)')
 parser.add_argument('--moco-m', default=0.999, type=float,
                     help='moco momentum of updating key encoder (default: 0.999)')
-parser.add_argument('--moco-t', default=0.10, type=float,
+parser.add_argument('--moco-t', default=0.07, type=float,
                     help='softmax temperature (default: 0.07)')
 
 # options for moco v2

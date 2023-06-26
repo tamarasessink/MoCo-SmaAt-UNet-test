@@ -8,7 +8,6 @@ import os
 import pickle
 import numpy as np
 from torch import nn
-from sklearn.metrics import roc_auc_score
 
 
 def get_metrics_from_model(model, test_dl, threshold=0.5):
@@ -54,7 +53,7 @@ def get_metrics_from_model(model, test_dl, threshold=0.5):
         hss = ((total_tp * total_tn) - (total_fn * total_fp)) / (
                 (total_tp + total_fn) * (total_fn + total_tn) + (total_tp + total_fp) * (total_fp + total_tn))
 
-    return np.array(loss_model.cpu()), precision, recall, accuracy, f1, csi, far, hss, auc_model_end
+    return np.array(loss_model.cpu()), precision, recall, accuracy, f1, csi, far, hss
 
 
 if __name__ == '__main__':
@@ -73,7 +72,7 @@ if __name__ == '__main__':
 
     model_folder = "/content/drive/MyDrive/lightning/precip_regression/checkpoints/comparision"
 
-    model_file = "UNetDS_Attention/UNetDS_Attention_rain_threshhold_50_epoch=40-val_loss=0.353836.ckpt"  # change this to the desired checkpoint file
+    model_file = "UNetDS_Attention/UNetDS_Attention_rain_threshhold_50_epoch=87-val_loss=0.163479.ckpt"  # change this to the desired checkpoint file
     threshold = 0.5  # mm/h
 
     model, model_name = model_classes.get_model_class(model_file)
@@ -81,7 +80,7 @@ if __name__ == '__main__':
     model.to("cuda").eval()
 
     model_metrics = dict()
-    loss_model, precision, recall, accuracy, f1, csi, far, hss, auc = get_metrics_from_model(model, test_dl, threshold)
+    loss_model, precision, recall, accuracy, f1, csi, far, hss = get_metrics_from_model(model, test_dl, threshold)
     model_metrics[model_name] = {"loss_model": loss_model,
                                  "Precision": precision,
                                  "Recall": recall,
