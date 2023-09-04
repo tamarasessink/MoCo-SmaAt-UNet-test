@@ -6,16 +6,16 @@ To this end, we pre-train the SmaAt-UNet encoder using MoCo v1 or MoCo v2 method
 The trained model will then be used in downstream tasks (weather elements nowcasting using radar data). 
 We compared the MoCo-SmaAt-UNet with and without using self-supervised learning.
 
-<img src="C:\Users\Tamara\Desktop\Master scriptie\MoCo-SmaAt-UNet-train.drawio.png"/>
+<img src="images/MoCo-SmaAt-UNet.png"/>
 
-The proposed Moco-SmaAt-UNet can be found in the folder models under Moco_SmaAt-UNet.
+The proposed Moco-SmaAt-UNet can be found in the folder models under [MoCo_SmaAt_Unet.py](models%2FMoCo_SmaAt_Unet.py) .
 
 ### Precipitation dataset
 
 We use a dataset based on radar precipitation maps from The Royal Netherlands Meteorological Institute (KNMI).
 The dataset consists of precipitation maps in 5-minute intervals from 2016-2019. We use the dataset with 50%, which means with at least 50% of rainy pixels in the target images. The dataset has a size of 4GB. 
 An example of image we use can be seen below:
-<img src="C:\Users\Tamara\Desktop\Master scriptie\image 5.png"/>
+<img src="images/precipitation_map.png"/>
 
 ### Self-supervised Training
 
