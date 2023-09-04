@@ -1,4 +1,10 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+# Original code from MoCo repository https://github.com/facebookresearch/moco/blob/main/moco
+
 import torch
 import torch.nn as nn
 
@@ -35,9 +41,6 @@ class MoCo(nn.Module):
             self.encoder_k.fc = nn.Sequential(
                 nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc
             )
-
-        # self.encoder_q.fc = nn.Linear(512, dim)
-        # self.encoder_k.fc = nn.Linear(512, dim)
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize

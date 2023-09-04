@@ -7,6 +7,8 @@ from utils import dataset_precip
 import argparse
 import numpy as np
 
+# Original code from SmaAt-UNet repository https://github.com/HansBambel/SmaAt-UNet/blob/master/models
+
 
 class UNet_base(pl.LightningModule):
     @staticmethod

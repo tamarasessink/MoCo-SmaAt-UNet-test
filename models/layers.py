@@ -3,7 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 
 
-# Taken from https://discuss.pytorch.org/t/is-there-any-layer-like-tensorflows-space-to-depth-function/3487/14
+# Original code from https://discuss.pytorch.org/t/is-there-any-layer-like-tensorflows-space-to-depth-function/3487/14
 class DepthToSpace(nn.Module):
 
     def __init__(self, block_size):

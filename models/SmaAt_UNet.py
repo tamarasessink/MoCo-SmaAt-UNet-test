@@ -2,7 +2,8 @@ from torch import nn
 from models.unet_parts import OutConv
 from models.unet_parts_depthwise_separable import DoubleConvDS, UpDS, DownDS
 from models.layers import CBAM
-# from models.regression_lightning import Precip_regression_base
+
+# Original code from SmaAt-UNet repository https://github.com/HansBambel/SmaAt-UNet/blob/master/models
 
 #TODO: add copyright
 

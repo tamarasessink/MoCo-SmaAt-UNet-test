@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from metric import metric
 
+# Taken from https://github.com/HansBambel/SmaAt-UNet/blob/master/metric
 
 class ConfusionMatrix(metric.Metric):
     """Constructs a confusion matrix for a multi-class classification problems.

@@ -5,6 +5,8 @@ from models.layers import CBAM
 import pytorch_lightning as pl
 from models.regression_lightning import Precip_regression_base
 
+# Original code from SmaAt-UNet repository https://github.com/HansBambel/SmaAt-UNet/blob/master/models
+
 
 class UNet(Precip_regression_base):
     def __init__(self, hparams):

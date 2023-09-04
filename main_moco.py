@@ -1,5 +1,10 @@
-#!/usr/bin/env python
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+# Original code from MoCo repository https://github.com/facebookresearch/moco/blob/main/moco
+
 import argparse
 import builtins
 import math
@@ -8,10 +13,6 @@ import random
 import shutil
 import time
 import warnings
-from numpy import False_, asarray
-from numpy import savetxt
-
-import h5py as h5py
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -22,24 +23,12 @@ import torch.multiprocessing as mp
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
-from torchvision.transforms import ToPILImage
-import torchvision.datasets as datasets
-import torchvision.models as models
-import pylab as plt
-import numpy as np
-from PIL import Image
-from torch.utils import data
 from utils import dataset_precip
-from torch.nn import Module
-# from models.SmaAt_UNet import SmaAt_UNet
-# from models import unet_precip_regression_lightning as unet_regr
-import tensorflow as tf
 
 import moco.loader
 import moco.builder
-import moco.dataset
-import data
-from models.SmaAt_Unet_pre_training import SmaAt_UNet_pre
+
+from models.MoCo_SmaAt_Unet import MoCo_SmaAt_UNet
 
 # os.environ.pop('LD_PRELOAD', None)
 TF_ENABLE_ONEDNN_OPTS = 0
@@ -48,9 +37,6 @@ parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
                     default="/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5",
                     help='path to dataset')
-# parser.add_argument('-a', '--arch', metavar='ARCH', default='SmaAt_UNet',
-#                     choices=model_names,
-#                     help='model architecture: SmaAth-unet')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
 parser.add_argument('--epochs', default=200, type=int, metavar='N',
@@ -170,9 +156,9 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
-    print("=> creating model '{}'".format(SmaAt_UNet_pre(n_channels=12, n_classes=128)))
+    print("=> creating model '{}'".format(MoCo_SmaAt_UNet(n_channels=12, n_classes=128)))
     model = moco.builder.MoCo(
-        SmaAt_UNet_pre(n_channels=12, n_classes=128),
+        MoCo_SmaAt_UNet(n_channels=12, n_classes=128),
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     print(model)
 
@@ -232,9 +218,9 @@ def main_worker(gpu, ngpus_per_node, args):
     cudnn.benchmark = True
 
     # Data loading code
-    # f = h5py.File('/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5', "r")
     dataset = '/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5'
 
+    # Using augmentation for moco
     if args.aug_plus:
         augmentation = [
             transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
@@ -251,6 +237,7 @@ def main_worker(gpu, ngpus_per_node, args):
             transforms.ToTensor(),
         ]
 
+    # Two crops from same image
     two_crops_transform = moco.loader.TwoCropsTransform(transforms.Compose(augmentation))
 
     train_dataset = dataset_precip.precipitation_maps_oversampled_h5_pre(
@@ -268,7 +255,6 @@ def main_worker(gpu, ngpus_per_node, args):
                                                num_workers=args.workers, pin_memory=True, sampler=train_sampler,
                                                drop_last=True)
 
-    # print("len:",len(first_batch[0]))  # number of images in the list
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -281,7 +267,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                                     and args.rank % ngpus_per_node == 0):
             save_checkpoint({
                 'epoch': epoch + 1,
-                'arch': 'SmaAt_UNet_pre(n_channels=12, n_classes=128)',
+                'arch': 'MoCo_SmaAt_UNet(n_channels=12, n_classes=128)',
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
             }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
@@ -291,7 +277,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 # Save the model to Google Drive
                 save_checkpoint({
                     'epoch': epoch + 1,
-                    'arch': 'SmaAt_UNet_pre(n_channels=12, n_classes=128)',
+                    'arch': 'MoCo_SmaAt_UNet(n_channels=12, n_classes=128)',
                     'state_dict': model.state_dict(),
                     'optimizer': optimizer.state_dict(),
                 }, is_best=False, filename='/content/drive/MyDrive/MoCo/checkpoint_{:04d}.pth.tar'.format(epoch))
@@ -319,16 +305,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         # measure data loading time
         data_time.update(time.time() - end)
 
-        # for i in range(len(images)):
-        #     images[i] = tuple(img.cuda(args.gpu, non_blocking=True) for img in images[i])
         if args.gpu is not None:
             images[0] = images[0].cuda(args.gpu, non_blocking=True)
             images[1] = images[1].cuda(args.gpu, non_blocking=True)
 
-        # compute output = predict similarity score for l_pos and l_neg
+        # Predict similarity score for l_pos and l_neg
         output, target = model(im_q=images[0], im_k=images[1])
-        # target.shape torch.Size([256]) all 0's
-        # output.shape torch.Size([256, 65537])
         loss = criterion(output, target)
 
         # acc1/acc5 are (K+1)-way contrast classifier accuracy

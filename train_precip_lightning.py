@@ -1,3 +1,5 @@
+# Original code from SmaAt-UNet repository https://github.com/HansBambel/SmaAt-UNet/blob/master
+
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -5,7 +7,6 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateLogger, Ear
 from pytorch_lightning import loggers
 import argparse
 from models import unet_precip_regression_lightning as unet_regr
-from models.SmaAt_UNet import SmaAt_UNet
 import torchsummary
 import random
 import os
@@ -14,6 +15,7 @@ def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    return f"amount of seeds {seed}"
 
 def get_batch_size(hparams):
     if hparams.model == "UNetDS_Attention":
@@ -36,7 +38,7 @@ def get_batch_size(hparams):
 def train_regression(hparams):
     if hparams.model == "UNetDS_Attention":
         net = unet_regr.UNetDS_Attention(hparams=hparams)
-        pretrained = '/content/drive/MyDrive/models/checkpoint_0199 (1).pth.tar'
+        pretrained = ''
         pretrained = os.path.join(os.getcwd(), pretrained)
         if os.path.isfile(pretrained):
             print("=> loading checkpoint '{}'".format(pretrained))
@@ -122,7 +124,7 @@ def train_regression(hparams):
 
 
 if __name__ == "__main__":
-    set_seed(42)
+    set_seed(35)
     parser = argparse.ArgumentParser()
 
     parser = unet_regr.Precip_regression_base.add_model_specific_args(parser)

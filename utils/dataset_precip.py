@@ -3,8 +3,10 @@ from torch.utils.data import Dataset
 import h5py
 import numpy as np
 from PIL import Image
+import pylab as plt
 
 
+# This contains the whole training dataset (3 years)
 class precipitation_maps_h5(Dataset):
     def __init__(self, in_file, num_input_images, num_output_images, train=True, transform=None):
         super(precipitation_maps_h5, self).__init__()
@@ -19,15 +21,10 @@ class precipitation_maps_h5(Dataset):
         self.train = train
         # Dataset is all the images
         self.size_dataset = self.n_images-(num_input_images+num_output_images)
-        # self.size_dataset = int(self.n_images/(num_input_images+num_output_images))
         self.transform = transform
         self.dataset = None
 
     def __getitem__(self, index):
-        # min_feature_range = 0.0
-        # max_feature_range = 1.0
-        # with h5py.File(self.file_name, 'r') as dataFile:
-        #     dataset = dataFile["train" if self.train else "test"]['images'][index:index+self.sequence_length]
         # load the file here (load as singleton)
         if self.dataset is None:
             self.dataset = h5py.File(self.file_name, 'r', rdcc_nbytes=1024**3)["train" if self.train else "test"]['images']
@@ -54,9 +51,7 @@ class precipitation_maps_oversampled_h5(Dataset):
 
         self.num_input = num_input_images
         self.num_output = num_output_images
-
         self.train = train
-        # self.size_dataset = int(self.n_images/(num_input_images+num_output_images))
         self.transform = transform
         self.dataset = None
 
@@ -75,7 +70,77 @@ class precipitation_maps_oversampled_h5(Dataset):
         return input_img, target_img
 
     def __len__(self):
-        return self.samples
+        return self.samples - 3822
+
+class precipitation_maps_oversampled_h5_2years(Dataset):
+    def __init__(self, in_file, num_input_images, num_output_images, train=True, transform=None):
+        super(precipitation_maps_oversampled_h5_2years, self).__init__()
+
+        self.file_name = in_file
+        self.samples, _, _, _ = h5py.File(self.file_name, 'r')["train" if train else "test"]['images'].shape
+
+        self.num_input = num_input_images
+        self.num_output = num_output_images
+        self.train = train
+        self.transform = transform
+        self.dataset = None
+
+    def __getitem__(self, index):
+        if index >= self.samples - 1911:
+            raise IndexError("Index out of range of available data")
+
+        if self.dataset is None:
+            self.dataset = h5py.File(self.file_name, 'r', rdcc_nbytes=1024 ** 3)["train" if self.train else "test"][
+                'images']
+
+        # Shift the index by 3822
+        shifted_index = index + 1911
+        imgs = np.array(self.dataset[shifted_index], dtype="float32")
+
+        if self.transform is not None:
+            imgs = self.transform(imgs)
+        input_img = imgs[:self.num_input]
+        target_img = imgs[-1]
+
+        return input_img, target_img
+
+    def __len__(self):
+        return self.samples - 1911
+
+class precipitation_maps_oversampled_h5_1years(Dataset):
+    def __init__(self, in_file, num_input_images, num_output_images, train=True, transform=None):
+        super(precipitation_maps_oversampled_h5_1years, self).__init__()
+
+        self.file_name = in_file
+        self.samples, _, _, _ = h5py.File(self.file_name, 'r')["train" if train else "test"]['images'].shape
+
+        self.num_input = num_input_images
+        self.num_output = num_output_images
+        self.train = train
+        self.transform = transform
+        self.dataset = None
+
+    def __getitem__(self, index):
+        if index >= 1911:
+            raise IndexError("Index out of range of available data")
+
+        if self.dataset is None:
+            self.dataset = h5py.File(self.file_name, 'r', rdcc_nbytes=1024 ** 3)["train" if self.train else "test"][
+                'images']
+
+        # Shift the index by 3822
+        shifted_index = index + 3822
+        imgs = np.array(self.dataset[shifted_index], dtype="float32")
+
+        if self.transform is not None:
+            imgs = self.transform(imgs)
+        input_img = imgs[:self.num_input]
+        target_img = imgs[-1]
+
+        return input_img, target_img
+
+    def __len__(self):
+        return 1911
 
 class precipitation_maps_oversampled_h5_pre(Dataset):
     def __init__(self, in_file, num_input_images, num_output_images, train=True, transform=None):

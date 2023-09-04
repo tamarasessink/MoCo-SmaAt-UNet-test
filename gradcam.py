@@ -1,3 +1,5 @@
+# Original code from SAR-UNet https://github.com/mathieurenault1/SAR-UNet/blob/master
+
 import os
 
 import cv2
@@ -19,7 +21,6 @@ from pytorch_grad_cam import GradCAM, \
 from pytorch_grad_cam.utils.image import show_cam_on_image, \
     preprocess_image
 
-from models.SmaAt_Unet_pre_training import SmaAt_UNet_pre
 from models.SmaAt_UNet import SmaAt_UNet
 from models.unet_precip_regression_lightning import UNetDS_Attention
 from utils import dataset_precip
@@ -42,10 +43,11 @@ class SemanticSegmentationTarget:
 def run_cam(model, target_layers, device, test_dl):
     image_count = 0
     for x, y_true in tqdm(test_dl, leave=False):
+        # choose the image we want to see
         if image_count >= 5:
             break
-        # y_true = y_true.cpu()
-        # y_true = y_true.squeeze()
+        y_true = y_true.cpu()
+        y_true = y_true.squeeze()
         # plt.imshow(y_true)
         # plt.savefig('orginal.png')
         x = x.to(torch.device(device))
@@ -65,7 +67,9 @@ def run_cam(model, target_layers, device, test_dl):
 
         fig, axes = plt.subplots(1, 5, figsize=(15, 3))
         # fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-        # image_count += 1
+        image_count += 1
+
+        # Visualisation of ground true vs prediction
         # axes[0].imshow(y_true[0].cpu().numpy())
         # axes[0].set_title('Ground Truth', {'fontsize': 16})
         # axes[1].imshow((output[0][0]).detach().cpu().numpy())
@@ -74,28 +78,28 @@ def run_cam(model, target_layers, device, test_dl):
         # axes[2].set_title('Mask', {'fontsize': 16})
 
         # Encoder layers
-        # axes[0].imshow(cam_image[0])
-        # axes[0].set_title('CBAM 1', {'fontsize': 16})
-        # axes[1].imshow(cam_image[1])
-        # axes[1].set_title('CBAM 2', {'fontsize': 16})
-        # axes[2].set_title('CBAM 3', {'fontsize': 16})
-        # axes[2].imshow(cam_image[2])
-        # axes[3].set_title('CBAM 4', {'fontsize': 16})
-        # axes[3].imshow(cam_image[3])
-        # axes[4].set_title('CBAM 5', {'fontsize': 16})
-        # axes[4].imshow(cam_image[4])
+        axes[0].imshow(cam_image[0])
+        axes[0].set_title('CBAM 1', {'fontsize': 16})
+        axes[1].imshow(cam_image[1])
+        axes[1].set_title('CBAM 2', {'fontsize': 16})
+        axes[2].set_title('CBAM 3', {'fontsize': 16})
+        axes[2].imshow(cam_image[2])
+        axes[3].set_title('CBAM 4', {'fontsize': 16})
+        axes[3].imshow(cam_image[3])
+        axes[4].set_title('CBAM 5', {'fontsize': 16})
+        axes[4].imshow(cam_image[4])
 
         # Decoder layers
-        axes[0].imshow(cam_image[2])
-        axes[0].set_title('Up1', {'fontsize': 16})
-        axes[1].imshow(cam_image[5])
-        axes[1].set_title('Up2', {'fontsize': 16})
-        axes[2].imshow(cam_image[8])
-        axes[2].set_title('Up3', {'fontsize': 16})
-        axes[3].imshow(cam_image[12])
-        axes[3].set_title('Up4', {'fontsize': 16})
-        axes[4].imshow(y_true)
-        axes[4].set_title('Ground Truth', {'fontsize': 16})
+        # axes[0].imshow(cam_image[2])
+        # axes[0].set_title('Up1', {'fontsize': 16})
+        # axes[1].imshow(cam_image[5])
+        # axes[1].set_title('Up2', {'fontsize': 16})
+        # axes[2].imshow(cam_image[8])
+        # axes[2].set_title('Up3', {'fontsize': 16})
+        # axes[3].imshow(cam_image[12])
+        # axes[3].set_title('Up4', {'fontsize': 16})
+        # axes[4].imshow(y_true)
+        # axes[4].set_title('Ground Truth', {'fontsize': 16})
         plt.savefig('heatmap.png')
         plt.show()
 
@@ -105,7 +109,7 @@ model = SmaAt_UNet(n_channels=12, n_classes=1)
 
 # Load the state dictionary from the checkpoint file
 checkpoint = torch.load(
-    "/content/drive/MyDrive/UNetDS_Attention_rain_threshhold_50_epoch=52-val_loss=0.216322.ckpt")
+    "/content/drive/MyDrive/lightning/precip_regression/checkpoints/comparision/UNetDS_Attention/UNetDS_Attention_rain_threshhold_50_epoch=87-val_loss=0.163479.ckpt")
 
 # Sometimes the state dictionary is stored under the 'state_dict' key in the checkpoint
 if 'state_dict' in checkpoint:
@@ -120,6 +124,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.eval()
 model.to(torch.device(device))
 
+# Put location of the precipitation dataset
 data_file = "/content/drive/MyDrive/train_test_2016-2019_input-length_12_img-ahead_6_rain-threshhold_50.h5"
 
 dataset = dataset_precip.precipitation_maps_oversampled_h5(
@@ -135,7 +140,8 @@ test_dl = torch.utils.data.DataLoader(
     pin_memory=True
 )
 
-target_layers = [
+# Decoder layers
+decoder_layers = [
     # Up1
     [model.up1],
     [model.up1.conv],
@@ -159,6 +165,7 @@ target_layers = [
     [model.up4.conv.double_conv[4]],  # The second batch normalization in double_conv of up4
 ]
 
+# Encoder layers
 encoder_layers = [
     [model.cbam1],
     [model.cbam2],
@@ -166,32 +173,5 @@ encoder_layers = [
     [model.cbam4],
     [model.cbam5],
 ]
-# if one to run encoder: use encoder_layers
-run_cam(model, target_layers, device, test_dl)
-
-# input_img, target_img = dataset[0]  # Get the first sample in the dataset
-
-# image_index = 1000  # choose the index of the image sequence to visualize
-# input_images, _ = dataset[image_index]  # retrieve the input image sequence
-#
-# input_images_tensor = torch.from_numpy(input_images)
-# input_images_tensor = input_images_tensor.unsqueeze(0)
-#
-# # Move input_images_tensor to GPU if available
-# if torch.cuda.is_available():
-#     input_images_tensor = input_images_tensor.cuda()
-#
-# #input_images = input_images.unsqueeze(0)  # add a batch dimension
-#
-# # Use GradCAM
-# target_layer = moco_model.down4 # replace with the layer you want
-# gradcam = GradCAM(model=moco_model,  target_layers=[target_layer], use_cuda=True)
-# heatmap = gradcam(input_images_tensor)
-# heatmap = heatmap - np.min(heatmap)
-# heatmap = heatmap / np.max(heatmap)
-#
-# plt.imshow(input_images[-1].squeeze(), cmap='viridis')  # plot the last image in the sequence
-# plt.savefig('heatmap.png')
-# plt.imshow(heatmap.squeeze(), alpha=0.5, cmap='viridis', interpolation='bilinear')  # overlay the heatmap
-# plt.savefig('heatmap2.png')  # save the plot as a PNG file
-# plt.show()  # display the plot
+# if one to run encoder: use encoder_layers and uncomment the encoder part
+run_cam(model, encoder_layers, device, test_dl)

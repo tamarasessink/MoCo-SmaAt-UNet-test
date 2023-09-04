@@ -1,3 +1,5 @@
+# Original code from SmaAt-UNet repository https://github.com/HansBambel/SmaAt-UNet/blob/master
+
 import torch
 from torch import nn
 import matplotlib.pyplot as plt

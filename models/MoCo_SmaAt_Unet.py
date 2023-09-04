@@ -1,16 +1,13 @@
 import torch.nn as nn
-from torch import Tensor
 import torch
 
-from models.unet_parts_depthwise_separable import DoubleConvDS, UpDS, DownDS
+from models.unet_parts_depthwise_separable import DoubleConvDS, DownDS
 from models.layers import CBAM
 
 
-# TODO: add copyright
-
-class SmaAt_UNet_pre(nn.Module):
+class MoCo_SmaAt_UNet(nn.Module):
     def __init__(self, n_channels, n_classes, kernels_per_layer=2, bilinear=True, reduction_ratio=16):
-      super(SmaAt_UNet_pre, self).__init__()
+      super(MoCo_SmaAt_UNet, self).__init__()
       self.n_channels = n_channels
       self.n_classes = n_classes
       kernels_per_layer = kernels_per_layer

@@ -1,26 +1,12 @@
 import os
-
-import numpy as np
-import umap.umap_ as umap
 import argparse
-import pytorch_lightning as pl
-import torch
-from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-# import hdbscan
-from sklearn.cluster import KMeans
-from PIL import Image
-from torch import device
-import matplotlib.cm as cm
 import plotly.express as px
 import pandas as pd
 from sklearn.cluster import KMeans
 
-import moco.loader
 import moco.builder
-from models import unet_precip_regression_lightning as unet_regr
-from models.SmaAt_UNet import SmaAt_UNet
-from models.SmaAt_Unet_pre_training import SmaAt_UNet_pre
+from models.MoCo_SmaAt_Unet import MoCo_SmaAt_UNet
 from utils import dataset_precip
 
 import numpy as np
@@ -32,9 +18,7 @@ if __name__ == "__main__":
     seed = 42  # You can choose any number as your seed
     # Set numpy random seed
     np.random.seed(seed)
-    # Set PyTorch random seed
     torch.manual_seed(seed)
-    # Set python's random module's seed
     random.seed(seed)
 
     parser = argparse.ArgumentParser()
@@ -54,10 +38,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     model = moco.builder.MoCo(
-        SmaAt_UNet_pre(n_channels=12, n_classes=128),
+        MoCo_SmaAt_UNet(n_channels=12, n_classes=128),
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
-    # model = SmaAt_UNet_pre(n_channels=12, n_classes=128)  # use the appropriate model class here
+    # model = MoCo_SmaAt_UNet(n_channels=12, n_classes=128)  # use this to see UMAP without pre-training
 
+    # Use checkpoint of pre-trained network
     pretrained = '/content/drive/MyDrive/checkpoint_0199.pth (1).tar'
     pretrained = os.path.join(os.getcwd(), pretrained)
     if os.path.isfile(pretrained):
@@ -106,13 +91,11 @@ if __name__ == "__main__":
     )
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=32, shuffle=False,
-
                                                num_workers=0, pin_memory=True, drop_last=True)
 
     # Get the query encoder
     query_encoder = model.encoder_q
 
-    # Assume dataloader is an instance of torch.utils.data.DataLoader that loads your images
     model.eval()
     with torch.no_grad():
         features_list = []
@@ -125,24 +108,18 @@ if __name__ == "__main__":
             features_list.append(features.cpu().numpy())
             indexes.extend(range(i * train_loader.batch_size, (i + 1) * train_loader.batch_size))
 
-            print(i)
-
     features_array = np.concatenate(features_list, axis=0)
 
-    # Create the UMAP object and fit it to your data
+    # Create the UMAP object and fit it to the data
     reducer = umap.UMAP()
     # Run UMAP on the features
     umap_results = reducer.fit_transform(features_array)
 
-    # Fit HDBSCAN to your UMAP results
-    # clusterer = hdbscan.HDBSCAN(min_cluster_size=5, gen_min_span_tree=False)
-    # clusterer.fit(umap_results)
     # Fit KMeans with 6 clusters to your UMAP results
     kmeans = KMeans(n_clusters=6)
     kmeans.fit(umap_results)
 
-    # # Plot the UMAP results with HDBSCAN clusters
-
+    # Plot the UMAP results
     plt.scatter(umap_results[:, 0], umap_results[:, 1], c=kmeans.labels_, cmap='viridis')
     plt.colorbar(label='Cluster Label')
     plt.title("UMAP Projections Clustered")
@@ -159,58 +136,5 @@ if __name__ == "__main__":
     fig = px.scatter(df, x='UMAP-1', y='UMAP-2', color='Cluster', color_continuous_scale='viridis',
                      hover_data=['index'])
 
-    # Save the plot as an HTML file
+    # Save the plot as an HTML file, to interactively explore the data points
     fig.write_html("umap_plot.html")
-
-    # # Plot the features in red
-    # plt.scatter(umap_results[:, 0], umap_results[:, 1], alpha=0.5, label='Features')
-
-    # # index_cluster0 = np.where(clusters == 0)[0][4]
-    # # index_cluster1 = np.where(clusters == 1)[0][4]
-    # #
-    # # # Fetch the corresponding images using the indices from the clusters and the original_data array
-    # # image_cluster0 = original_data[index_cluster0]
-    # # image_cluster1 = original_data[index_cluster1]
-    # #
-    # # # Display the images as before
-    # # plt.figure(figsize=(10, 5))
-    # #
-    # # plt.subplot(1, 2, 1)
-    # # plt.imshow(image_cluster0[0])
-    # # plt.title('First image from cluster 0')
-    # #
-    # # plt.subplot(1, 2, 2)
-    # # plt.imshow(image_cluster1[0])
-    # # plt.title('First image from cluster 1')
-    # # Create a DataFrame with the UMAP results
-    # df = pd.DataFrame({'UMAP-1': umap_results[:, 0], 'UMAP-2': umap_results[:, 1], 'index': range(len(umap_results))})
-
-    # # Create an interactive scatter plot
-    # fig = px.scatter(df, x='UMAP-1', y='UMAP-2', hover_data=['index'])
-
-    # # Save the plot as an HTML file
-    # fig.write_html("umap_plot.html")
-    # plt.savefig('UMAP.png')
-    # plt.show()
-
-    # index_a = 4783 # index of the point in cluster A
-    # index_b = 2825 # index of the point in cluster B
-    # index_a = 954
-    # index_b = 3469
-
-    # Load the actual images or segmentation maps using the indexes
-    # image_a, _ = train_dataset[indexes[index_a]]
-    # image_b, _ = train_dataset[indexes[index_b]]
-
-    # # # # Visualization
-    # plt.figure(figsize=(10, 5))
-    # plt.title('Images from cluster 1')
-
-    # plt.subplot(1, 2, 1)
-    # plt.imshow(image_a[0])
-
-    # plt.subplot(1, 2, 2)
-    # plt.imshow(image_b[0])
-
-    # plt.savefig('images_UMAP.png')
-    # plt.show()

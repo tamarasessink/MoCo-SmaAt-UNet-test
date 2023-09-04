@@ -1,14 +1,11 @@
+# Original code from SmaAt-UNet repository https://github.com/HansBambel/SmaAt-UNet/blob/master
+
 import torch
 from utils import dataset_precip, model_classes
-from models import unet_precip_regression_lightning as unet_regr
-import matplotlib.pyplot as plt
 from tqdm import tqdm
-from sklearn.metrics import confusion_matrix
-import os
 import pickle
 import numpy as np
 from torch import nn
-
 
 def get_metrics_from_model(model, test_dl, threshold=0.5):
     # Precision = tp/(tp+fp)

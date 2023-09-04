@@ -1,5 +1,6 @@
 """ Parts of the U-Net model """
 # Base model taken from: https://github.com/milesial/Pytorch-UNet
+# Original code from SmaAt-UNet repository https://github.com/HansBambel/SmaAt-UNet/blob/master/models
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
