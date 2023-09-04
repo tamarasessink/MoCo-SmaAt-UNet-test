@@ -17,7 +17,7 @@ The dataset consists of precipitation maps in 5-minute intervals from 2016-2019.
 An example of image we use can be seen below:
 <img src="images/precipitation_map.png"/>
 
-### Self-supervised Training
+### Self-supervised learning (pre-training of model)
 
 This implementation only supports **multi-gpu**, **DistributedDataParallel** training, which is faster and simpler; single-gpu or DataParallel training is not supported.
 
@@ -28,7 +28,7 @@ To do unsupervised pre-training of a MoCo-SmaAt-UNet model on the precipitation 
   --batch-size 32 \
   --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
 ```
-This script uses all the default hyper-parameters as described in the MoCo v1 paper. To run MoCo v2, set `--mlp --moco-t 0.2 --aug-plus --cos`.
+This script uses all the default hyperparameters as described in the MoCo v1 paper. To run MoCo v2, set `--mlp --moco-t 0.2 --aug-plus --cos`.
 
 ### Downstream task Precipitation using MoCo-SmaAt-UNet
 
@@ -44,4 +44,11 @@ After that the testing fase can take place, by running for testing all models in
 Or using this code for testing a particular checkpoint:
 ```
 !python /content/Master_Thesis/cal_metrics_test_set.py
+```
+
+### Installing dependencies
+```
+!pip install pytorch-lightning==0.7.6
+!pip install opencv-python
+!pip install grad-cam
 ```
