@@ -101,14 +101,19 @@ if __name__ == "__main__":
         features_list = []
         labels = []
         indexes = []
+        image_list = []
 
         for i, (data, label) in enumerate(train_loader):
             # Extract features from the query encoder
             output, features = query_encoder.extract_features(data)
             features_list.append(features.cpu().numpy())
+            image_list.append(data.cpu().numpy())  # Store the original images
             indexes.extend(range(i * train_loader.batch_size, (i + 1) * train_loader.batch_size))
+            print(i)
 
     features_array = np.concatenate(features_list, axis=0)
+    image_array = np.concatenate(image_list, axis=0)
+
 
     # Create the UMAP object and fit it to the data
     reducer = umap.UMAP()
@@ -126,6 +131,26 @@ if __name__ == "__main__":
     plt.xlabel("UMAP-1")
     plt.ylabel("UMAP-2")
     plt.savefig('UMAP.png')
+    plt.show()
+
+    clustered_images = {}  # Dictionary to hold the average image per cluster
+
+    for i in range(6):  # Assuming you have 6 clusters
+        indices = np.where(kmeans.labels_ == i)[0]
+        cluster_images = image_array[indices]
+        average_image = np.mean(cluster_images, axis=0)
+        clustered_images[i] = average_image
+
+    fig, axs = plt.subplots(1, 6, figsize=(20, 20))
+
+    for i in range(6):  # Assuming you have 6 clusters
+        average_image = clustered_images[i]
+        if average_image.shape[0] == 1:
+            average_image = np.squeeze(average_image, axis=0)
+        axs[i].imshow(average_image)
+        axs[i].set_title(f'Cluster {i + 1}')
+        axs[i].axis('off')
+
     plt.show()
 
     # Create a DataFrame with the UMAP results and cluster labels
